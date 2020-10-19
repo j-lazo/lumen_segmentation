@@ -3,57 +3,88 @@ import random
 import shutil
 
 
-def gather_all_data(source_folders, destination_folder, exceptions):
+def gather_all_data(source_folder, destination_folder, exceptions):
 
     """
+    This function gathers all data from different folders and put it all together in a single folder called "all"
     :param source_folders:
     :param destination_folder:
     :param exceptions:
     :return:
     """
 
-    current_directory = '/home/nearlab/Jorge/ICPR2020/data/lumen_enlarged_dataset_rgb/augmented_data/'
-    files_path_images = "".join([current_directory, 'all/image/'])
-    files_path_labels = "".join([current_directory, 'all/label/'])
-    original_images = os.listdir(files_path_images)
-    label_images = os.listdir(files_path_labels)
+    folder_list = set(os.listdir(source_folder)) - set(exceptions)
+    folder_list = sorted([element for element in folder_list if
+                          os.path.isdir(''.join([source_folder, element]))])
 
-    print(original_images)
-    print(label_images)
+    for folder in folder_list[:2]:
+        files_path_images = "".join([source_folder, folder, '/image/'])
+        files_path_labels = "".join([source_folder, folder, '/label/'])
+        images_list = os.listdir(files_path_images)
+        labels_list = os.listdir(files_path_labels)
 
-    training_dir = current_directory + 'train/'
-    validation_dir = current_directory + 'val/'
+    #image_subfolder = sorted([element for element in images_list if os.path.isdir(''.join([source_folder, files_path_images]))])
+    labels_subfolder = sorted([element for element in labels_list if
+                              os.path.isdir(''.join([source_folder, files_path_labels]))])
 
-    # all_training = '/home/william/m18_jorge/Desktop/THESIS/DATA/transfer_learning_training/all_training/'
-    # all_validation = '/home/william/m18_jorge/Desktop/THESIS/DATA/transfer_learning_training/all_validation/'
+    if not(labels_subfolder):
 
-    for count_i, image in enumerate(original_images):
-        if random.random() <= training_percentage:
-            if image in label_images:
-                print(image, 'image and label exists')
-                shutil.copy(files_path_images + image, "".join([training_dir, 'image/', image]))
-                shutil.copy(files_path_labels + image, "".join([training_dir, 'label/', image]))
-            else:
-                print('.')
-                # print(image, 'the pair doesn not exists')
-            # shutil.copy(files_path_positives + image, "".join([all_training, image]))
-        else:
-            if image in label_images:
-                print(image, 'image and label exists')
-                shutil.copy(files_path_images + image, "".join([validation_dir, 'image/', image]))
-                shutil.copy(files_path_labels + image, "".join([validation_dir, 'label/', image]))
-            else:
-                print('.')
-                # print(image, 'the pair doesn not exists')
-            # shutil.copy(files_path_positives + image, "".join([all_validation, image]))
+        destination_image_folder = "".join([destination_folder, 'image/'])
+        destination_label_folder = "".join([destination_folder, 'label/'])
 
+        if not (os.path.isdir(destination_image_folder)):
+            os.mkdir(destination_image_folder)
+
+        if not (os.path.isdir(destination_label_folder)):
+            os.mkdir(destination_label_folder)
+
+        for counter, image in images_list:
+            shutil.copy(files_path_images + image, destination_image_folder + image)
+            shutil.copy(files_path_labels + image, destination_label_folder + image)
+
+    else:
+        for sub_folder in labels_subfolder:
+            #2Do complete this option and the funciotn copy_images_and_label
+            copy_images_and_label(source_folder, destination_folder, sub_folder)
+
+def copy_images_and_label(source_folder, destination_folder, folder=''):
+
+    """
+    Copy tuples of images and labels in 1 step
+    :param original_folder:
+    :param destination_folder:
+    :return:
+    """
+
+    source_folder = "".join([source_folder, '/', folder, '/'])
+    destination_folder = "".join([destination_folder, '/', folder, '/'])
+
+    files_path_images = "".join([source_folder,  '/image/'])
+    files_path_labels = "".join([source_folder, '/label/'])
+    images_list = os.listdir(files_path_images)
+    labels_list = os.listdir(files_path_labels)
+
+    destination_image_folder = "".join([destination_folder, 'image/'])
+    destination_label_folder = "".join([destination_folder, 'label/'])
+
+    if not (os.path.isdir(destination_image_folder)):
+        os.mkdir(destination_image_folder)
+
+    if not (os.path.isdir(destination_label_folder)):
+        os.mkdir(destination_label_folder)
+
+    for counter, image in images_list:
+        shutil.copy(files_path_images + image, destination_image_folder + image)
+        shutil.copy(files_path_labels + image, destination_label_folder + image)
+
+    return 0
 
 def main():
-    source_folders = ''
-    destination_folder = ''
-    exceptions = []
 
-    gather_all_data():
+    source_folders = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/all_data/'
+    destination_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/all_data/all/'
+    exceptions = ['all']
+    gather_all_data(source_folders, destination_folder, exceptions)
 
 if __name__ == '__main__':
     main()

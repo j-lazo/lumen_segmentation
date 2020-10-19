@@ -38,9 +38,7 @@ def select_no_empty_frames(current_directory):
                 shutil.copy(files_path_images + image, "".join([directory_new_images, image]))
                 shutil.copy(files_path_labels + image, "".join([directory_new_labels, image]))
 
-                
-    print(counter, 'non zero images')
-    
+
 def prepare_data(directory):
     select_no_empty_frames(directory)
     
