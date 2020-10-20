@@ -1,5 +1,10 @@
-project_folder = '/home/nearlab/Jorge/Projects/ICPR2020/data/lumen_enlarged_dataset_grayscale/' 
-#project_folder = '/home/nearlab/Jorge/ICPR2020/data/lumen_polar_grayscale/'
+project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
+image_modality = 'grayscale'
+augmented = True
+if augmented is True:
+    amount_data = '/augmented_data/'
+else:
+    amount_data = '/'
 
 import sys
 sys.path.append(project_folder)
@@ -34,12 +39,15 @@ from sklearn.metrics import recall_score
 
 
 def load_data(path):
-
-    images = sorted(glob(os.path.join(path, "image/*")))
-    masks = sorted(glob(os.path.join(path, "label/*")))
-    total_size = len(images)
-    print('total size ', total_size, path)
-
+    print(path)
+    path_images = ''.join([path, 'image/', image_modality, "/*"])
+    path_labels = ''.join([path, "label/*"])
+    images = sorted(glob(path_images))
+    masks = sorted(glob(path_labels))
+    total_size_images = len(images)
+    total_size_labels = len(masks)
+    print('total size images:', total_size_images, path_images)
+    print('total size labels:', total_size_labels, path_labels)
     return (images, masks)
       
 
@@ -231,15 +239,26 @@ def get_confusion_matrix_overlaid_mask(image, groundtruth, predicted, alpha, col
     return cv2.addWeighted(image, alpha, color_mask, 1 - alpha, 0)
 
 path = project_folder 
-print(path)
-(train_x, train_y) = load_data(project_folder + "augmented_data/train/")
-(valid_x, valid_y) = load_data(project_folder + "augmented_data/val/") 
-(test_x, test_y) = load_data(project_folder + "test/")
+train_data_used = ''.join([project_folder,  'train', amount_data])
+test_train_img = sorted(os.listdir(train_data_used + 'image/' + 'grayscale/'))
+print(len(test_train_img))
+test_train_label = sorted(os.listdir(train_data_used + 'label/'))
+print(len(test_train_label))
 
-## Hyperparameters
+(train_x, train_y) = load_data(train_data_used)
+print('Data training: ', train_data_used)
+
+val_data_used = ''.join([project_folder,  'val', amount_data])
+(valid_x, valid_y) = load_data(val_data_used)
+print('Data validation: ', val_data_used)
+
+(test_x1, test_y) = load_data(project_folder + "test/test_01/")
+#(test_x2, test_y2) = load_data(project_folder + "test/test_02/")
+#(test_x3, test_y3) = load_data(project_folder + "test/test_02/")
+## ------------------- Hyperparameters -----------------------------------
 batch = 16
 lr = 1e-3
-epochs = 60
+epochs = 150
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
@@ -262,16 +281,32 @@ if len(valid_x) % batch != 0:
     valid_steps += 1
 
 training_time = datetime.now()
+new_results_id = ''.join(['ResUnet',
+                           '_lr_',
+                           str(lr),
+                           '_bs_',
+                           str(batch),
+                           '_', image_modality, '_',
+                           training_time.strftime("%d_%m_%Y %H_%M"),
+                           ])
 
-    
+results_directory = ''.join([project_folder, 'results/', new_results_id, '/'])
+os.mkdir(results_directory)
+os.mkdir(results_directory + 'predictions/')
+os.mkdir(results_directory + 'predictions/test_01/')
+os.mkdir(results_directory + 'predictions/test_02/')
+os.mkdir(results_directory + 'predictions/test_03/')
+os.mkdir(results_directory + 'predictions/val/')
+
 callbacks = [
-    ModelCheckpoint(project_folder+"files/model.h5"),
+    ModelCheckpoint(results_directory + new_results_id + "_model.h5"),
     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10),
-    CSVLogger(project_folder + "files/data.csv"),
+    CSVLogger(results_directory + new_results_id + "_data.csv"),
     TensorBoard(),
     EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)]
-    
-#model_checkpoint = [ModelCheckpoint(project_folder + 'unet_training_' + training_time.strftime("%d_%m_%Y %H_%M") +'_.hdf5'), 
+
+
+#model_checkpoint = [ModelCheckpoint(project_folder + 'unet_training_' + training_time.strftime("%d_%m_%Y %H_%M") +'_.hdf5'),
 #                   EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)]
 
 class_1_weight = 0.55
@@ -300,7 +335,7 @@ model_history = model.fit(train_dataset,
     #class_weight=class_weight"""
 
 print(model_history.history.keys())
-name_performance_metrics_file = ''.join([project_folder, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+name_performance_metrics_file = ''.join([results_directory, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
 
 
 # summarize history for dice_coef
@@ -351,32 +386,28 @@ dependencies = {'dice_coef': dice_coef}
 	
 
 # evaluate in the test dataset
-test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
+test_dataset = tf_dataset(test_x1, test_y, batch=batch_size)
 
-test_steps = (len(test_x)//batch_size)
-if len(test_x) % batch_size != 0:
+test_steps = (len(test_x1)//batch_size)
+if len(test_x1) % batch_size != 0:
     test_steps += 1
 
 model.evaluate(test_dataset, steps=test_steps)
 
 
-test_steps = (len(test_x)//batch_size)
-if len(test_x) % batch_size != 0:
+test_steps = (len(test_x1)//batch_size)
+if len(test_x1) % batch_size != 0:
     test_steps += 1
 
-for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
+for i, (x, y) in tqdm(enumerate(zip(test_x1, test_y)), total=len(test_x1)):
     print(i, x)
     directory_image = x
     x = read_image_test(x)
     y = read_mask_test(y)
     y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-    #print(type(y_pred))
-    #print(np.shape(y_pred))
-    #prediction = model.test_on_batch(y_pred)
-    #print(prediction)
-    #print(type(prediction))
-    name_original_file = directory_image.replace(project_folder + 'test/image/', '')
-    results_name = ''.join([project_folder, 'predictions/', name_original_file])
+    name_original_file = directory_image.replace(project_folder + 'test/test_01/image/' + image_modality + '/', '')
+    print(name_original_file)
+    results_name = ''.join([results_directory, 'predictions/test_01/', name_original_file])
     cv2.imwrite(results_name, y_pred * 255.0)
 
 # evaluate in the validation dataset
@@ -390,6 +421,8 @@ if len(valid_x) % batch_size != 0:
 
 model.evaluate(val_dataset, steps=valid_steps)
 
+"""
+#predictions in the validation dataset
 for i, (x, y) in tqdm(enumerate(zip(valid_x, valid_y)), total=len(valid_x)):
     print(i, x)
     directory_image = x
@@ -401,7 +434,7 @@ for i, (x, y) in tqdm(enumerate(zip(valid_x, valid_y)), total=len(valid_x)):
 
     name_original_file = directory_image.replace(project_folder + 'val/image/', '')
     results_name = ''.join([project_folder, 'predictions_val/', name_original_file])
-    cv2.imwrite(results_name, y_pred * 255.0)
+    cv2.imwrite(results_name, y_pred * 255.0)"""
 
 # evaluate in the train dataset
 
@@ -486,17 +519,16 @@ def read_img(dir_image):
 
 # save the resutls of the validation dataset in a CSV file
 
-ground_truth_imgs_dir= project_folder + 'val/label/'
-result_mask_dir = project_folder + 'predictions_val/'
+#ground_truth_imgs_dir= project_folder + 'val/label/'
+#result_mask_dir = project_folder + 'predictions_val/'
+#ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
+#results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+#results_dice = []
+#results_sensitivity = []
+#results_specificity = []
 
-ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
-results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
 
-results_dice = []
-results_sensitivity = []
-results_specificity = []
-  
-for image in ground_truth_image_list[:]:
+"""for image in ground_truth_image_list[:]:
     print(image)
     result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
     if result_image is not None:
@@ -513,20 +545,20 @@ for image in ground_truth_image_list[:]:
                     
         #print(sensitivity, specificity)
     else:
-        print(image, 'not found in results list')
+        print(image, 'not found in results list')"""
               
 
 now = datetime.now()
-name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y %H_%M"), '_.csv']) 
-with open(name_validation_csv_file, mode='w') as results_file:
-    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    for i, file in enumerate(ground_truth_image_list):
-        results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+#name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+#with open(name_validation_csv_file, mode='w') as results_file:
+#    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+#    for i, file in enumerate(ground_truth_image_list):
+#        results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
 
 # save the resutls of the test dataset in a CSV file
 
-ground_truth_imgs_dir= project_folder + 'test/label/'
-result_mask_dir = project_folder + 'predictions/'
+ground_truth_imgs_dir= project_folder + 'test/test_01/label/'
+result_mask_dir = results_directory + 'predictions/test_01/'
 
 ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
 results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
@@ -536,31 +568,28 @@ results_sensitivity = []
 results_specificity = []
   
 for image in ground_truth_image_list[:]:
-    print(image)
+
     result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
     if result_image is not None:
         original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
         predicted_mask = read_img(''.join([result_mask_dir, result_image]))
-        dice_val = dice(original_mask, predicted_mask) 
-        
-        #print(dice_val, 1-dice_val)
+        dice_val = dice(original_mask, predicted_mask)
         results_dice.append(dice_val)
-        
         sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
         results_sensitivity.append(sensitivity)
         results_specificity.append(specificity)
-                    
         #print(sensitivity, specificity)
     else:
         print(image, 'not found in results list')
               
 
 now = datetime.now()
-name_test_csv_file = ''.join([project_folder, 'results_test_', now.strftime("%d_%m_%Y %H_%M"), '_.csv']) 
+name_test_csv_file = ''.join([results_directory, 'results_test_', new_results_id, '_.csv'])
 with open(name_test_csv_file, mode='w') as results_file:
     results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     for i, file in enumerate(ground_truth_image_list):
         results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+
 
 def read_results_csv(file_path, row_id=0):
     dice_values = []
@@ -572,7 +601,7 @@ def read_results_csv(file_path, row_id=0):
         return dice_values
 
 path_file_1= name_test_csv_file
-path_file_2 = name_validation_csv_file
+path_file_2 = name_test_csv_file
 print('Dice coef')
 list_dice_values_file_1 = read_results_csv(path_file_1, 2)
 list_dice_values_file_2 = read_results_csv(path_file_2, 2)
