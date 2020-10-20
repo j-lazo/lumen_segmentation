@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun  6 17:32:09 2020
-
-@author: jlazo
+@author: j-lazo
 """
 
 import cv2
 import os
 import random
 import numpy as np
-import shutil
-from matplotlib import pyplot as plt
 from scipy.ndimage import zoom
 
-
-
 def clipped_zoom(img, zoom_factor, **kwargs):
+
+    """
+    :param img:
+    :param zoom_factor:
+    :param kwargs:
+    :return:
+    """
 
     h, w = img.shape[:2]
 
@@ -60,12 +61,20 @@ def clipped_zoom(img, zoom_factor, **kwargs):
         out = img
     return out
 
+
 def adjust_brightness(image, gamma=1.0):
+    """
+
+    :param image:
+    :param gamma:
+    :return:
+    """
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255
     for i in np.arange(0, 256)]).astype("uint8")
     
     return cv2.LUT(image, table)
+
 
 def augment_data(files_path):
     
@@ -79,9 +88,9 @@ def augment_data(files_path):
     
         rows, cols, channels = img.shape
         # define the rotation matrixes
-        rot1 = cv2.getRotationMatrix2D((cols/2,rows/2), 90, 1)
-        rot2 = cv2.getRotationMatrix2D((cols/2,rows/2), 180, 1)
-        rot3 = cv2.getRotationMatrix2D((cols/2,rows/2), 270, 1)
+        rot1 = cv2.getRotationMatrix2D((cols/2, rows/2), 90, 1)
+        rot2 = cv2.getRotationMatrix2D((cols/2, rows/2), 180, 1)
+        rot3 = cv2.getRotationMatrix2D((cols/2, rows/2), 270, 1)
         # rotate the images
         im_rot1 = cv2.warpAffine(img, rot1, (cols, rows))
         im_rot2 = cv2.warpAffine(img, rot2, (cols, rows))
@@ -92,11 +101,11 @@ def augment_data(files_path):
         mask_rot3 = cv2.warpAffine(mask, rot3, (cols, rows))
         
         # flip images 
-        horizontal_img = cv2.flip(img, 0 )
-        vertical_img = cv2.flip(img, 1 )
+        horizontal_img = cv2.flip(img, 0)
+        vertical_img = cv2.flip(img, 1)
         #flip masks
-        horizontal_mask = cv2.flip(mask, 0 )
-        vertical_mask = cv2.flip(mask, 1 )       
+        horizontal_mask = cv2.flip(mask, 0)
+        vertical_mask = cv2.flip(mask, 1)
        
         # save the images 
         cv2.imwrite("".join([files_path, 'image/', element[:-4], '_1', '.png']), im_rot1)
@@ -113,8 +122,9 @@ def augment_data(files_path):
     
         # change brightness
         list_of_images = [img, im_rot1, im_rot2, im_rot3, horizontal_img, vertical_img]
-        list_of_masks =  [mask, mask_rot1, mask_rot2, mask_rot3, horizontal_mask, vertical_mask]
+        list_of_masks = [mask, mask_rot1, mask_rot2, mask_rot3, horizontal_mask, vertical_mask]
         gammas = [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.3, 1.4, 1.5]
+
         for i in range(4):
             index = random.randint(0,len(list_of_images)-1)
             img_choice = list_of_images[index]
@@ -139,11 +149,13 @@ def augment_data(files_path):
         cv2.imwrite("".join([files_path, 'image/', element[:-4], '_11_.png']), zoom_out_img)
         cv2.imwrite("".join([files_path, 'label/', element[:-4], '_11_.png']), zoom_out_mask)
 
+
 def main():
     
-    path_directory = '/home/nearlab/Jorge/ICPR2020/data/lumen_enlarged_dataset_rgb/augmented_data/all/'
+    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/val/augmented_data/'
     augment_data(path_directory)
-    
+
+
 if __name__ == "__main__":
     main()
 
