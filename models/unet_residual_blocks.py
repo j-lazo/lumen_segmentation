@@ -6,6 +6,9 @@ if augmented is True:
 else:
     amount_data = '/'
 
+analyze_validation_set = False
+evaluate_train_dir = False
+
 import sys
 sys.path.append(project_folder)
 
@@ -238,12 +241,60 @@ def get_confusion_matrix_overlaid_mask(image, groundtruth, predicted, alpha, col
         color_mask += mask_rgb
     return cv2.addWeighted(image, alpha, color_mask, 1 - alpha, 0)
 
+
+def calculae_rates(image_1, image_2):
+    image_1 = np.asarray(image_1).astype(np.bool)
+    image_2 = np.asarray(image_2).astype(np.bool)
+
+    image_1 = image_1.flatten()
+    image_2 = image_2.flatten()
+
+    if image_1.shape != image_2.shape:
+        raise ValueError("Shape mismatch: im1 and im2 must have the same shape.")
+
+    precision_value = average_precision_score(image_1, image_2)
+    recall_value = recall_score(image_1, image_2)
+
+    return precision_value, recall_value
+
+
+def dice(im1, im2, smooth=1):
+    im1 = np.asarray(im1).astype(np.bool)
+    im2 = np.asarray(im2).astype(np.bool)
+
+    if im1.shape != im2.shape:
+        raise ValueError("Shape mismatch: im1 and im2 must have the same shape.")
+
+    # Compute Dice coefficient
+    intersection = np.logical_and(im1, im2)
+
+    return 2. * (intersection.sum() + smooth) / (im1.sum() + im2.sum() + smooth)
+
+
+def read_img(dir_image):
+    original_img = cv2.imread(dir_image)
+    height, width, depth = original_img.shape
+    img = cv2.resize(original_img, (256, 256))
+    return img
+
+
+def make_predictions():
+    return 0
+
+
+def read_results_csv(file_path, row_id=0):
+    dice_values = []
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            dice_values.append(float(row[row_id]))
+
+        return dice_values
+
+
+# ------------------- Define training and validation data -----------------------------------
 path = project_folder 
 train_data_used = ''.join([project_folder,  'train', amount_data])
-test_train_img = sorted(os.listdir(train_data_used + 'image/' + 'grayscale/'))
-print(len(test_train_img))
-test_train_label = sorted(os.listdir(train_data_used + 'label/'))
-print(len(test_train_label))
 
 (train_x, train_y) = load_data(train_data_used)
 print('Data training: ', train_data_used)
@@ -252,10 +303,7 @@ val_data_used = ''.join([project_folder,  'val', amount_data])
 (valid_x, valid_y) = load_data(val_data_used)
 print('Data validation: ', val_data_used)
 
-(test_x1, test_y) = load_data(project_folder + "test/test_01/")
-#(test_x2, test_y2) = load_data(project_folder + "test/test_02/")
-#(test_x3, test_y3) = load_data(project_folder + "test/test_02/")
-## ------------------- Hyperparameters -----------------------------------
+# ------------------- Hyperparameters -----------------------------------
 batch = 16
 lr = 1e-3
 epochs = 150
@@ -263,22 +311,13 @@ epochs = 150
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
 
-model = build_model()
-model.summary()
-
 opt = tf.keras.optimizers.Adam(lr)
 metrics = ["acc", tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), dice_coef, iou]
 
-model.compile(optimizer = opt, loss=dice_coef_loss, metrics=metrics)
+model = build_model()
+model.summary()
+model.compile(optimizer=opt, loss=dice_coef_loss, metrics=metrics)
 #model.compile(loss="binary_crossentropy", optimizer=opt, metrics=metrics)
-
-train_steps = len(train_x)//batch
-valid_steps = len(valid_x)//batch
-
-if len(train_x) % batch != 0:
-    train_steps += 1
-if len(valid_x) % batch != 0:
-    valid_steps += 1
 
 training_time = datetime.now()
 new_results_id = ''.join(['ResUnet',
@@ -292,11 +331,6 @@ new_results_id = ''.join(['ResUnet',
 
 results_directory = ''.join([project_folder, 'results/', new_results_id, '/'])
 os.mkdir(results_directory)
-os.mkdir(results_directory + 'predictions/')
-os.mkdir(results_directory + 'predictions/test_01/')
-os.mkdir(results_directory + 'predictions/test_02/')
-os.mkdir(results_directory + 'predictions/test_03/')
-os.mkdir(results_directory + 'predictions/val/')
 
 callbacks = [
     ModelCheckpoint(results_directory + new_results_id + "_model.h5"),
@@ -305,18 +339,35 @@ callbacks = [
     TensorBoard(),
     EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)]
 
-
 #model_checkpoint = [ModelCheckpoint(project_folder + 'unet_training_' + training_time.strftime("%d_%m_%Y %H_%M") +'_.hdf5'),
 #                   EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)]
-
-class_1_weight = 0.55
-class_2_weight = 5.02
-class_weight = [class_1_weight, class_2_weight, 1.0, 3.4]
-
+#class_1_weight = 0.55
+#class_2_weight = 5.02
+#class_weight = [class_1_weight, class_2_weight, 1.0, 3.4]
 
 #weight_for_0 = 0.55
 #weight_for_1 = 5.02
 #class_weight = {0:weight_for_0, 1:weight_for_1}
+
+#with CustomObjectScope({'iou': iou}):
+#    model_dir = project_folder + "files/model.h5"
+#    model = tf.keras.models.load_model(model_dir, compile=False)
+#    model.compile(optimizer=opt, metrics = [["acc", tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), iou]])
+#dependencies = {'iou': iou}
+
+#dependencies = {'dice_coef': dice_coef}
+#with CustomObjectScope({'dice_coef': dice_coef}):
+#        model = tf.keras.models.load_model(project_folder + "files/model.hdf5",
+#                                           custom_objects = dependencies)
+        #model.compile(optimizer=opt, loss='binary_crossentropy', metrics = [["acc", tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), iou]])
+
+train_steps = len(train_x)//batch
+valid_steps = len(valid_x)//batch
+
+if len(train_x) % batch != 0:
+    train_steps += 1
+if len(valid_x) % batch != 0:
+    valid_steps += 1
 
 model_history = model.fit(train_dataset,
     validation_data=valid_dataset,
@@ -326,19 +377,206 @@ model_history = model.fit(train_dataset,
     callbacks=callbacks)
     #class_weight=class_weight)
 
-"""model_history = model.fit(train_dataset,
-    validation_data=valid_dataset,
-    epochs=epochs,
-    steps_per_epoch=train_steps,
-    validation_steps=valid_steps,
-    callbacks=callbacks)
-    #class_weight=class_weight"""
-
+print('METRICS')
 print(model_history.history.keys())
-name_performance_metrics_file = ''.join([results_directory, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+
+name_performance_metrics_file = ''.join([results_directory,
+                                         'performance_metrics',
+                                         new_results_id,
+                                         '_.csv'])
+
+name_performance_metrics_file = ''.join([project_folder, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+
+with open(name_performance_metrics_file, mode='w') as results_file:
+    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    list_keys = [str(item) for item in model_history.history.keys()]
+    list_keys.insert(0, 'epoch')
+    results_file_writer.writerow(list_keys)
+    for i, element in enumerate(model_history.history['loss']):
+        results_file_writer.writerow([str(i), element,
+                                      model_history.history[list_keys[2]][i],
+                                      model_history.history[list_keys[3]][i],
+                                      model_history.history[list_keys[4]][i],
+                                      model_history.history[list_keys[5]][i],
+                                      model_history.history[list_keys[6]][i],
+                                      model_history.history[list_keys[7]][i],
+                                      model_history.history[list_keys[8]][i],
+                                      model_history.history[list_keys[9]][i],
+                                      model_history.history[list_keys[10]][i],
+                                      model_history.history[list_keys[11]][i]])
+
+def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
+
+    output_directory = 'predictions/' + output_name + '/'
+    batch_size = 16
+    (test_x, test_y) = load_data(directory_to_evaluate)
+    test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
+    test_steps = (len(test_x)//batch_size)
+
+    if len(test_x) % batch_size != 0:
+        test_steps += 1
+
+    # evaluate the model in the test dataset
+    model.evaluate(test_dataset, steps=test_steps)
+    test_steps = (len(test_x)//batch_size)
+    if len(test_x) % batch_size != 0:
+        test_steps += 1
+
+    for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
+        print(i, x)
+        directory_image = x
+        x = read_image_test(x)
+        y = read_mask_test(y)
+        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+        print(directory_to_evaluate + image_modality + '/')
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
+        print(name_original_file)
+        results_name = ''.join([results_directory, output_directory, name_original_file])
+        print(results_name)
+        cv2.imwrite(results_name, y_pred * 255.0)
+
+    # save the results of the test dataset in a CSV file
+    ground_truth_imgs_dir = directory_to_evaluate
+    result_mask_dir = results_directory + output_directory
+
+    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
+                               isfile(join(ground_truth_imgs_dir, file))]
+    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+
+    results_dice = []
+    results_sensitivity = []
+    results_specificity = []
+
+    for image in ground_truth_image_list[:]:
+
+        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
+        if result_image is not None:
+            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
+            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
+            dice_val = dice(original_mask, predicted_mask)
+            results_dice.append(dice_val)
+            sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
+            results_sensitivity.append(sensitivity)
+            results_specificity.append(specificity)
+
+        else:
+            print(image, 'not found in results list')
+
+    name_test_csv_file = ''.join([results_directory, 'results_evaluation_',
+                                  output_name,
+                                  '_',
+                                  new_results_id,
+                                  '_.csv'])
 
 
-# summarize history for dice_coef
+    with open(name_test_csv_file, mode='w') as results_file:
+        results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for i, file in enumerate(ground_truth_image_list):
+            results_file_writer.writerow(
+                [str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+
+    return name_test_csv_file
+
+
+# evaluate and predict in the test dataset(s)
+os.mkdir(results_directory + 'predictions/')
+os.mkdir(results_directory + 'predictions/test_01/')
+os.mkdir(results_directory + 'predictions/test_02/')
+os.mkdir(results_directory + 'predictions/test_03/')
+
+evaluation_directory_01 = project_folder + "test/test_01/"
+evaluation_directory_02 = project_folder + "test/test_02/"
+evaluation_directory_03 = project_folder + "test/test_03/"
+name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_01')
+name_test_csv_file_2 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_02')
+name_test_csv_file_3 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_03')
+
+# evaluate in the validation dataset
+os.mkdir(results_directory + 'predictions/val/')
+(valid_x, valid_y) = load_data(project_folder + "val/")
+val_dataset = tf_dataset(valid_x, valid_y, batch=16)
+
+if len(valid_x) % 16 != 0:
+    valid_steps += 1
+print('Evaluation Validation Dataset')
+model.evaluate(val_dataset, steps=valid_steps)
+
+# evaluate in the train dataset
+(train_x, train_y) = load_data(project_folder + "train/")
+train_dataset = tf_dataset(train_x, train_y, batch=16)
+
+if len(train_x) % 16 != 0:
+    train_steps += 1
+
+print('Evaluation Train Dataset')
+model.evaluate(train_dataset, steps=train_steps)
+
+if evaluate_train_dir is True:
+    for i, (x, y) in tqdm(enumerate(zip(train_x, train_y)), total=len(train_x)):
+        print(i, x)
+        directory_image = x
+        x = read_image_test(x)
+        y = read_mask_test(y)
+        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+        height, width, _ = x.shape
+
+        name_original_file = directory_image.replace(project_folder + 'train/image/', '')
+        results_name = ''.join([project_folder, 'predictions_train/', name_original_file])
+        cv2.imwrite(results_name, y_pred * 255.0)
+
+# save the results of the validation dataset in a CSV file
+if analyze_validation_set is True:
+
+    now=datetime.now()
+    #predictions in the validation dataset
+    for i, (x, y) in tqdm(enumerate(zip(valid_x, valid_y)), total=len(valid_x)):
+        print(i, x)
+        directory_image = x
+        x = read_image_test(x)
+        y = read_mask_test(y)
+        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+
+        height, width, _ = x.shape
+
+        name_original_file = directory_image.replace(project_folder + 'val/image/', '')
+        results_name = ''.join([project_folder, 'predictions_val/', name_original_file])
+        cv2.imwrite(results_name, y_pred * 255.0)
+
+    ground_truth_imgs_dir = results_directory + 'val/label/'
+    result_mask_dir = results_directory + 'predictions_val/'
+
+    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
+
+    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+    results_dice = []
+    results_sensitivity = []
+    results_specificity = []
+
+    for image in ground_truth_image_list[:]:
+
+        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
+        if result_image is not None:
+            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
+            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
+            dice_val = dice(original_mask, predicted_mask)
+
+            # print(dice_val, 1-dice_val)
+            results_dice.append(dice_val)
+
+            sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
+            results_sensitivity.append(sensitivity)
+            results_specificity.append(specificity)
+
+            # print(sensitivity, specificity)
+        else:
+            print(image, 'not found in results list')
+
+    name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+    with open(name_validation_csv_file, mode='w') as results_file:
+        results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for i, file in enumerate(ground_truth_image_list):
+            results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+
 plt.figure()
 plt.plot(model_history.history['dice_coef'], '-*')
 plt.plot(model_history.history['val_dice_coef'], '-*')
@@ -363,290 +601,66 @@ plt.plot(model_history.history['loss'])
 plt.plot(model_history.history['val_loss'])
 plt.title('model loss history')
 plt.ylabel('DSC loss')
-plt.xlabel('epoch')																
+plt.xlabel('epoch')
 plt.legend(['train', 'valtest'], loc='upper left')
 
-    
-batch_size = 16
 
-#with CustomObjectScope({'iou': iou}):
-#    model_dir = project_folder + "files/model.h5"
-#    model = tf.keras.models.load_model(model_dir, compile=False)
-#    model.compile(optimizer=opt, metrics = [["acc", tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), iou]])
+path_file_1= name_test_csv_file_1
+path_file_2 = name_test_csv_file_2
+path_file_3 = name_test_csv_file_3
 
-
-#dependencies = {'iou': iou}
-
-dependencies = {'dice_coef': dice_coef}
-
-#with CustomObjectScope({'dice_coef': dice_coef}):
-#        model = tf.keras.models.load_model(project_folder + "files/model.hdf5", 
-#                                           custom_objects = dependencies)
-        #model.compile(optimizer=opt, loss='binary_crossentropy', metrics = [["acc", tf.keras.metrics.Recall(), tf.keras.metrics.Precision(), iou]])
-	
-
-# evaluate in the test dataset
-test_dataset = tf_dataset(test_x1, test_y, batch=batch_size)
-
-test_steps = (len(test_x1)//batch_size)
-if len(test_x1) % batch_size != 0:
-    test_steps += 1
-
-model.evaluate(test_dataset, steps=test_steps)
-
-
-test_steps = (len(test_x1)//batch_size)
-if len(test_x1) % batch_size != 0:
-    test_steps += 1
-
-for i, (x, y) in tqdm(enumerate(zip(test_x1, test_y)), total=len(test_x1)):
-    print(i, x)
-    directory_image = x
-    x = read_image_test(x)
-    y = read_mask_test(y)
-    y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-    name_original_file = directory_image.replace(project_folder + 'test/test_01/image/' + image_modality + '/', '')
-    print(name_original_file)
-    results_name = ''.join([results_directory, 'predictions/test_01/', name_original_file])
-    cv2.imwrite(results_name, y_pred * 255.0)
-
-# evaluate in the validation dataset
-
-(train_x, train_y) = load_data(project_folder + "train/")
-(valid_x, valid_y) = load_data(project_folder + "val/")
-
-val_dataset = tf_dataset(valid_x, valid_y, batch=batch_size)
-if len(valid_x) % batch_size != 0:
-    valid_steps += 1
-
-model.evaluate(val_dataset, steps=valid_steps)
-
-"""
-#predictions in the validation dataset
-for i, (x, y) in tqdm(enumerate(zip(valid_x, valid_y)), total=len(valid_x)):
-    print(i, x)
-    directory_image = x
-    x = read_image_test(x)
-    y = read_mask_test(y)
-    y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-    
-    height, width, _ = x.shape
-
-    name_original_file = directory_image.replace(project_folder + 'val/image/', '')
-    results_name = ''.join([project_folder, 'predictions_val/', name_original_file])
-    cv2.imwrite(results_name, y_pred * 255.0)"""
-
-# evaluate in the train dataset
-
-train_dataset = tf_dataset(train_x, train_y, batch=batch_size)
-
-val_dataset = tf_dataset(valid_x, valid_y, batch=batch_size)
-if len(train_x) % batch_size != 0:
-    train_steps += 1
-
-model.evaluate(train_dataset, steps=train_steps)
-
-for i, (x, y) in tqdm(enumerate(zip(train_x, train_y)), total=len(train_x)):
-    print(i, x)
-    directory_image = x
-    x = read_image_test(x)
-    y = read_mask_test(y)
-    y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-    height, width, _ = x.shape
-
-    name_original_file = directory_image.replace(project_folder + 'train/image/', '')
-    results_name = ''.join([project_folder, 'predictions_train/', name_original_file])
-    cv2.imwrite(results_name, y_pred * 255.0)
-
-print(model_history.history.keys())
-name_performance_metrics_file = ''.join([project_folder, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
-
-with open(name_performance_metrics_file, mode='w') as results_file:
-    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    list_keys = [str(item) for item in model_history.history.keys()]
-    list_keys.insert(0,'epoch')
-    results_file_writer.writerow(list_keys)
-    for i, element in enumerate(model_history.history['loss']):
-        results_file_writer.writerow([str(i), element,
-                                      model_history.history[list_keys[2]][i],
-                                      model_history.history[list_keys[3]][i], 
-                                      model_history.history[list_keys[4]][i], 
-                                      model_history.history[list_keys[5]][i], 
-                                      model_history.history[list_keys[6]][i], 
-                                      model_history.history[list_keys[7]][i], 
-                                      model_history.history[list_keys[8]][i], 
-                                      model_history.history[list_keys[9]][i], 
-                                      model_history.history[list_keys[10]][i], 
-                                      model_history.history[list_keys[11]][i]])
-
-def calculae_rates(image_1, image_2):
-
-    image_1 = np.asarray(image_1).astype(np.bool)
-    image_2 = np.asarray(image_2).astype(np.bool)
-
-    image_1 = image_1.flatten()
-    image_2 = image_2.flatten()
-
-    if image_1.shape != image_2.shape:
-        raise ValueError("Shape mismatch: im1 and im2 must have the same shape.")
-
-    precision_value = average_precision_score(image_1, image_2)
-    recall_value = recall_score(image_1, image_2)
-
-    return precision_value, recall_value
-        
-    
-
-def dice(im1, im2, smooth=1):
-
-    im1 = np.asarray(im1).astype(np.bool)
-    im2 = np.asarray(im2).astype(np.bool)
-
-
-    if im1.shape != im2.shape:
-        raise ValueError("Shape mismatch: im1 and im2 must have the same shape.")
-
-    # Compute Dice coefficient
-    intersection = np.logical_and(im1, im2)
-    
-    return 2. * (intersection.sum() + smooth)/ (im1.sum() + im2.sum() + smooth)
-
-def read_img(dir_image):
-    original_img = cv2.imread(dir_image)
-    height, width, depth = original_img.shape
-    img = cv2.resize(original_img, (256, 256))
-    return img
-
-# save the resutls of the validation dataset in a CSV file
-
-#ground_truth_imgs_dir= project_folder + 'val/label/'
-#result_mask_dir = project_folder + 'predictions_val/'
-#ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
-#results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-#results_dice = []
-#results_sensitivity = []
-#results_specificity = []
-
-
-"""for image in ground_truth_image_list[:]:
-    print(image)
-    result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
-    if result_image is not None:
-        original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
-        predicted_mask = read_img(''.join([result_mask_dir, result_image]))
-        dice_val = dice(original_mask, predicted_mask) 
-        
-        #print(dice_val, 1-dice_val)
-        results_dice.append(dice_val)
-        
-        sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
-        results_sensitivity.append(sensitivity)
-        results_specificity.append(specificity)
-                    
-        #print(sensitivity, specificity)
-    else:
-        print(image, 'not found in results list')"""
-              
-
-now = datetime.now()
-#name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y %H_%M"), '_.csv'])
-#with open(name_validation_csv_file, mode='w') as results_file:
-#    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-#    for i, file in enumerate(ground_truth_image_list):
-#        results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
-
-# save the resutls of the test dataset in a CSV file
-
-ground_truth_imgs_dir= project_folder + 'test/test_01/label/'
-result_mask_dir = results_directory + 'predictions/test_01/'
-
-ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
-results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-
-results_dice = []
-results_sensitivity = []
-results_specificity = []
-  
-for image in ground_truth_image_list[:]:
-
-    result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
-    if result_image is not None:
-        original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
-        predicted_mask = read_img(''.join([result_mask_dir, result_image]))
-        dice_val = dice(original_mask, predicted_mask)
-        results_dice.append(dice_val)
-        sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
-        results_sensitivity.append(sensitivity)
-        results_specificity.append(specificity)
-        #print(sensitivity, specificity)
-    else:
-        print(image, 'not found in results list')
-              
-
-now = datetime.now()
-name_test_csv_file = ''.join([results_directory, 'results_test_', new_results_id, '_.csv'])
-with open(name_test_csv_file, mode='w') as results_file:
-    results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    for i, file in enumerate(ground_truth_image_list):
-        results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
-
-
-def read_results_csv(file_path, row_id=0):
-    dice_values = []
-    with open(file_path, 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            dice_values.append(float(row[row_id]))
-        
-        return dice_values
-
-path_file_1= name_test_csv_file
-path_file_2 = name_test_csv_file
-print('Dice coef')
+print('Dice Coef.')
 list_dice_values_file_1 = read_results_csv(path_file_1, 2)
 list_dice_values_file_2 = read_results_csv(path_file_2, 2)
+list_dice_values_file_3 = read_results_csv(path_file_3, 2)
 
-data = [list_dice_values_file_1, list_dice_values_file_2]
+data = [list_dice_values_file_1, list_dice_values_file_2, list_dice_values_file_3]
 
-fig, axs = plt.subplots(1, 2)
-
+fig, axs = plt.subplots(1, 3)
 axs[0].boxplot(data[0], 1, 'gD')
-axs[0].set_title('Test data')
+axs[0].set_title('Test dataset 1')
 
 axs[1].boxplot(data[1], 1, 'gD')
-axs[1].set_title('Validation data')
+axs[1].set_title('Test dataset 2')
 
+axs[2].boxplot(data[2], 1, 'gD')
+axs[2].set_title('Test dataset 3')
 
 # sensitivity 
-print('sensitivity') 
+print('Sensitivity')
 list_dice_values_file_1 = read_results_csv(path_file_1, 3)
 list_dice_values_file_2 = read_results_csv(path_file_2, 3)
+list_dice_values_file_3 = read_results_csv(path_file_3, 3)
 
-data = [list_dice_values_file_1, list_dice_values_file_2]
+data = [list_dice_values_file_1, list_dice_values_file_2, list_dice_values_file_3]
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(1, 3)
 
 axs[0].boxplot(data[0], 1, 'gD')
-axs[0].set_title('Test data')
-
+axs[0].set_title('Test dataset 1')
 axs[1].boxplot(data[1], 1, 'gD')
-axs[1].set_title('Validation data')
+axs[1].set_title('Test dataset 2')
+axs[2].boxplot(data[2], 1, 'gD')
+axs[2].set_title('Test dataset 3')
 
 # specificity   
-print('specifficity')
+print('Specifficity')
 list_dice_values_file_1 = read_results_csv(path_file_1, 4)
 list_dice_values_file_2 = read_results_csv(path_file_2, 4)
+list_dice_values_file_3 = read_results_csv(path_file_3, 4)
 
-data = [list_dice_values_file_1, list_dice_values_file_2]
+data = [list_dice_values_file_1, list_dice_values_file_2, list_dice_values_file_3]
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(1, 3)
 
 axs[0].boxplot(data[0], 1, 'gD')
-axs[0].set_title('Test data')
+axs[0].set_title('Test dataset 1')
 
 axs[1].boxplot(data[1], 1, 'gD')
-axs[1].set_title('Validation data') 
+axs[1].set_title('Test dataset 2')
 
+axs[2].boxplot(data[2], 1, 'gD')
+axs[2].set_title('Test dataset 3')
 
 plt.show()
 
