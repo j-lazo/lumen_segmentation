@@ -310,7 +310,7 @@ print('Data validation: ', val_data_used)
 # ------------------- Hyperparameters -----------------------------------
 batch = 16
 lr = 1e-3
-epochs = 10
+epochs = 150
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
@@ -446,10 +446,6 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
     ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
                                isfile(join(ground_truth_imgs_dir, file))]
     results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-    print(results_image_list)
-    print(ground_truth_imgs_dir)
-    print(ground_truth_image_list)
-
     results_dice = []
     results_sensitivity = []
     results_specificity = []
