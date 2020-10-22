@@ -62,6 +62,7 @@ def read_image(path):
     x = x/255.0
     return x
 
+
 def read_mask(path):
     path = path.decode()
     x = cv2.imread(path)
@@ -70,6 +71,7 @@ def read_mask(path):
     x = x/255.0
     x = np.expand_dims(x, axis=-1)
     return x
+
 
 def tf_parse(x, y):
     def _parse(x, y):
@@ -81,6 +83,7 @@ def tf_parse(x, y):
     x.set_shape([256, 256, 3])
     y.set_shape([256, 256, 1])
     return x, y
+
 
 def tf_dataset(x, y, batch=8):
     dataset = tf.data.Dataset.from_tensor_slices((x, y))
@@ -220,11 +223,12 @@ def get_confusion_matrix_intersection_mats(groundtruth, predicted):
     predicted_inverse = np.logical_not(predicted)
 
     confusion_matrix_arrs['tp'] = np.logical_and(groundtruth, predicted)
-    confusion_matrix_arrs['tn'] = np.logical_and(groundtru/home/nearlab/Jorge/ICPR2020/data/lumen_enlarged_dataset_grayscaleth_inverse, predicted_inverse)
+    confusion_matrix_arrs['tn'] = np.logical_and(groundtruth, predicted_inverse)
     confusion_matrix_arrs['fp'] = np.logical_and(groundtruth_inverse, predicted)
     confusion_matrix_arrs['fn'] = np.logical_and(groundtruth, predicted_inverse)
 
     return confusion_matrix_arrs
+
 
 def get_confusion_matrix_overlaid_mask(image, groundtruth, predicted, alpha, colors):
     """
@@ -243,9 +247,9 @@ def get_confusion_matrix_overlaid_mask(image, groundtruth, predicted, alpha, col
 
 
 def calculae_rates(image_1, image_2):
+
     image_1 = np.asarray(image_1).astype(np.bool)
     image_2 = np.asarray(image_2).astype(np.bool)
-
     image_1 = image_1.flatten()
     image_2 = image_2.flatten()
 
@@ -306,7 +310,7 @@ print('Data validation: ', val_data_used)
 # ------------------- Hyperparameters -----------------------------------
 batch = 16
 lr = 1e-3
-epochs = 35
+epochs = 10
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
@@ -326,7 +330,7 @@ new_results_id = ''.join(['ResUnet',
                            '_bs_',
                            str(batch),
                            '_', image_modality, '_',
-                           training_time.strftime("%d_%m_%Y %H_%M"),
+                           training_time.strftime("%d_%m_%Y_%H_%M"),
                            ])
 
 results_directory = ''.join([project_folder, 'results/', new_results_id, '/'])
@@ -385,7 +389,7 @@ name_performance_metrics_file = ''.join([results_directory,
                                          new_results_id,
                                          '_.csv'])
 
-name_performance_metrics_file = ''.join([project_folder, 'performance_metrics', training_time.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+name_performance_metrics_file = ''.join([results_directory, 'performance_metrics_', training_time.strftime("%d_%m_%Y_%H_%M"), '_.csv'])
 
 with open(name_performance_metrics_file, mode='w') as results_file:
     results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -490,8 +494,8 @@ evaluation_directory_01 = project_folder + "test/test_01/"
 evaluation_directory_02 = project_folder + "test/test_02/"
 evaluation_directory_03 = project_folder + "test/test_03/"
 name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_01')
-name_test_csv_file_2 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_02')
-name_test_csv_file_3 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_03')
+name_test_csv_file_2 = evaluate_and_predict(model, evaluation_directory_02, results_directory, 'test_02')
+name_test_csv_file_3 = evaluate_and_predict(model, evaluation_directory_03, results_directory, 'test_03')
 
 # evaluate in the validation dataset
 os.mkdir(results_directory + 'predictions/val/')
@@ -573,7 +577,7 @@ if analyze_validation_set is True:
         else:
             print(image, 'not found in results list')
 
-    name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y %H_%M"), '_.csv'])
+    name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y_%H_%M"), '_.csv'])
     with open(name_validation_csv_file, mode='w') as results_file:
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for i, file in enumerate(ground_truth_image_list):
