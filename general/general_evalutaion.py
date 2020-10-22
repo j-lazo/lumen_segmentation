@@ -154,7 +154,8 @@ def read_results_csv(file_path, row_id=0):
             dice_values.append(float(row[row_id]))
         
         return dice_values
-    
+
+
 def read_img_results(dir_image):
     print(dir_image)
     original_img = cv2.imread(dir_image)
@@ -171,7 +172,7 @@ def read_img_results(dir_image):
 
 def read_mask(dir_image):
     original_img = cv2.imread(dir_image)
-    
+
     if original_img is None:
         print('Could not open or find the image:', args.input)
         exit(0)
@@ -181,6 +182,7 @@ def read_mask(dir_image):
     img = img / 255
     img = (img > 0.9) * 1.0 
     return img
+
 
 def read_results_csv_plot(file_path):
     dice_values = []
@@ -256,7 +258,9 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
     predicted_masks = [f for f in listdir(dir_predictions) if isfile(join(dir_predictions, f))]
     print(dir_predictions)
     for image in predicted_masks[:]:
+        print(mask_list)
         print(image)
+
         result_image = [name for name in mask_list if (image[:] == name[:])][0]
         if result_image is not None:
 
@@ -325,7 +329,8 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
                         
                         plt.savefig(''.join([save_directory,  image, '_',str(counter),'_.png']))
                         plt.close()
-                        
+
+
 def crop_images(image_directory, roi, string_to_add):
 
     image_list = [f for f in listdir(image_directory) if isfile(join(image_directory, f))]
@@ -340,24 +345,47 @@ def crop_images(image_directory, roi, string_to_add):
         cv2.imwrite(new_name, croped_img)
     
 
-    
 def main():
     
-    project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
-    results_folder = project_folder + 'results/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_09_51/'
+
     
-    test_directory = project_folder + 'test/test_01/'
+    """test_directory = project_folder + 'test/test_01/'
     predictions_test_directory = results_folder + 'predictions/'
 
     name_test_csv_file = results_folder + 'results_evaluation_test_01_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_09_51_.csv'
-    print_box_plots(name_test_csv_file, name_test_csv_file, results_folder + 'comparison/')
     save_directory_test = results_folder + 'comparison/test/'
+    """
 
-    compare_results(test_directory, test_directory, name_test_csv_file, save_directory_test)
+    #print_box_plots(name_test_csv_file, name_test_csv_file, results_folder + 'comparison/')
+
+    """project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
+    folder_to_analyze = 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_09_51/'
+    test_folder = 'test_01/'
+    results_folder = project_folder + 'results/' + folder_to_analyze
+    test_directory = results_folder + 'test/' + test_folder
+    predictions_test_directory = results_folder + 'predicionts/' + test_folder"""
+
+
+    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/test_01/'
+
+    predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results/' \
+                                 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/predictions/test_01/'
+
+    name_test_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
+                         '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
+                         'results_evaluation_test_01_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22_.csv'
+
+    save_directory_test = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
+                         '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
+                         'comparison_predictions/test_01/'
+
     compare_results(test_directory, predictions_test_directory, name_test_csv_file, save_directory_test)
 
+    # compare_results(test_directory, test_directory, name_test_csv_file, save_directory_test)
+
     roi = [76, 160, 580, 300]
-    crop_images(save_directory_test, roi,'test_')
+    crop_images(save_directory_test, roi, 'test_')
+
 
 if __name__ == "__main__":
     main()
