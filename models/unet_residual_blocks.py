@@ -306,7 +306,7 @@ print('Data validation: ', val_data_used)
 # ------------------- Hyperparameters -----------------------------------
 batch = 16
 lr = 1e-3
-epochs = 150
+epochs = 35
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
@@ -436,12 +436,15 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
         cv2.imwrite(results_name, y_pred * 255.0)
 
     # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate
+    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
     result_mask_dir = results_directory + output_directory
 
     ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
                                isfile(join(ground_truth_imgs_dir, file))]
     results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+    print(results_image_list)
+    print(ground_truth_imgs_dir)
+    print(ground_truth_image_list)
 
     results_dice = []
     results_sensitivity = []
@@ -467,7 +470,6 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
                                   '_',
                                   new_results_id,
                                   '_.csv'])
-
 
     with open(name_test_csv_file, mode='w') as results_file:
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
