@@ -258,8 +258,6 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
     predicted_masks = [f for f in listdir(dir_predictions) if isfile(join(dir_predictions, f))]
     print(dir_predictions)
     for image in predicted_masks[:]:
-        print(mask_list)
-        print(image)
 
         result_image = [name for name in mask_list if (image[:] == name[:])][0]
         if result_image is not None:
@@ -273,6 +271,7 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
                                 
                 
                 for counter, element in enumerate(list_dice_values):
+
                     print(element[0])
                     if image == element[0]:
                         dice_value = float(element[1])
@@ -287,23 +286,10 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
                            'tn': (0, 0, 0)     #black
                            }
                         
-                        print(np.amin(mask_image),np.amax(mask_image))
-                        print(np.amin(predicted_mask),np.amax(predicted_mask))
                         overlay = get_confusion_matrix_overlaid_mask(image_frame, mask_image, predicted_mask, alpha, confusion_matrix_colors)
                         
                         my_dpi = 96
-                        #plt.figure(3, figsize=(640/my_dpi, 480/my_dpi), dpi=my_dpi)
-                        #plt.subplot(131)
-                        #plt.title(['dice_value: ', dice_value])
-                        #plt.imshow(image_frame)
-                        #plt.subplot(132)
-                        #plt.title('Mask')
-                        #plt.imshow(mask_image)
-                        #plt.subplot(133)
-                        #plt.title('Predicted')
-                        #plt.imshow(predicted_mask)
-                        #plt.savefig(''.join([save_directory + 'sample_result_',str(counter),'_.png']))
-                        
+
                         plt.figure(3, figsize=(640/my_dpi, 480/my_dpi), dpi=my_dpi)
                         
                         plt.subplot(141)
@@ -346,9 +332,7 @@ def crop_images(image_directory, roi, string_to_add):
     
 
 def main():
-    
 
-    
     """test_directory = project_folder + 'test/test_01/'
     predictions_test_directory = results_folder + 'predictions/'
 
@@ -365,23 +349,21 @@ def main():
     test_directory = results_folder + 'test/' + test_folder
     predictions_test_directory = results_folder + 'predicionts/' + test_folder"""
 
-
-    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/test_01/'
+    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/test_03/'
 
     predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results/' \
-                                 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/predictions/test_01/'
+                                 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/predictions/test_03/'
 
     name_test_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
                          '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
-                         'results_evaluation_test_01_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22_.csv'
+                         'results_evaluation_test_03_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22_.csv'
+
 
     save_directory_test = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
                          '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
-                         'comparison_predictions/test_01/'
+                         'comparison_predictions/test_03/'
 
     compare_results(test_directory, predictions_test_directory, name_test_csv_file, save_directory_test)
-
-    # compare_results(test_directory, test_directory, name_test_csv_file, save_directory_test)
 
     roi = [76, 160, 580, 300]
     crop_images(save_directory_test, roi, 'test_')
