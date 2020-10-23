@@ -30,10 +30,10 @@ def stars(p):
         return "*"
     else:
         return "-"
-    
+
+
 def compare_boxplots(data, labels, Title):
-    
-    
+
     # Generate some random indices that we'll use to resample the original data
     # arrays. For code brevity, just use the same random indices for each array
 

@@ -35,9 +35,7 @@ from datetime import datetime
 import csv
 
 project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
-
-'/results/ResUnet_lr_0.001_bs_16_grayscale_21_10_2020 19_48/predictions/test_01'
-#csv_path = '/home/jlazo/Desktop/current_work/ICPR2020/data/enlarged_dataset/results/lr_1e-3_300_epochs_skip/results_test.csv'
+folder_to_test = 'test_02'
 
 
 def read_results_csv(file_path, row_id=0):
@@ -81,7 +79,6 @@ def calculae_rates(image_1, image_2):
 
 def dice(im1, im2):
 
-    
     im1 = np.asarray(im1).astype(np.bool)
     im2 = np.asarray(im2).astype(np.bool)
         
@@ -94,6 +91,7 @@ def dice(im1, im2):
      
     return 2. * intersection.sum() / (im1.sum() + im2.sum())
 
+
 def read_img(dir_image):
     original_img = cv2.imread(dir_image)
     height, width, depth = original_img.shape
@@ -105,9 +103,9 @@ def read_img(dir_image):
 # save the resutls of the validation dataset in a CSV file
     
 
-
-ground_truth_imgs_dir= project_folder + 'test/label/'
-result_mask_dir = project_folder + 'predictions/'
+model_to_test = 'ResUnet_lr_0.001_bs_16_grayscale_21_10_2020 19_48'
+ground_truth_imgs_dir= project_folder + 'test/' + folder_to_test + '/label/'
+result_mask_dir = project_folder + 'results/' + model_to_test + '/predictions/' + folder_to_test + '/'
 
 ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
 results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
@@ -119,6 +117,7 @@ results_accuracy = []
 
 for image in ground_truth_image_list[:]:
     print(image)
+    print(results_image_list)
     result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
     if result_image is not None:
         original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
