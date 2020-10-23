@@ -141,26 +141,18 @@ def resize(dir_folder, new_size):
 
 def convert_grayscale(dir_folder):
 
-    images_folder_dir = ''.join([dir_folder, 'image/'])
+    images_folder_dir = ''.join([dir_folder, '/'])
     images_folder = os.listdir(images_folder_dir)
 
-    #masks_folder_dir = ''.join([dir_folder, 'label/'])
-    #masks_folder = os.listdir(masks_folder_dir)
-
     for image in images_folder:
-        img = cv2.imread(''.join([dir_folder, 'image/', image]))
+        img = cv2.imread(''.join([dir_folder, '/', image]))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        cv2.imwrite(''.join([dir_folder, 'image/', image]), gray)
-
-    #for mask in masks_folder:
-    #    img = cv2.imread(''.join([dir_folder, 'label/', mask]))
-    #    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #    cv2.imwrite(''.join([dir_folder, 'label/', mask]), gray)
+        cv2.imwrite(''.join([dir_folder, '/', image]), gray)
 
 
 def main():
 
-    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/val/augmented_data/image/'
+    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/train/augmented_data/image/'
     convert_grayscale(path_directory)
 
 
