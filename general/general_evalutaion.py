@@ -333,22 +333,6 @@ def crop_images(image_directory, roi, string_to_add):
 
 def main():
 
-    """test_directory = project_folder + 'test/test_01/'
-    predictions_test_directory = results_folder + 'predictions/'
-
-    name_test_csv_file = results_folder + 'results_evaluation_test_01_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_09_51_.csv'
-    save_directory_test = results_folder + 'comparison/test/'
-    """
-
-    #print_box_plots(name_test_csv_file, name_test_csv_file, results_folder + 'comparison/')
-
-    """project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
-    folder_to_analyze = 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_09_51/'
-    test_folder = 'test_01/'
-    results_folder = project_folder + 'results/' + folder_to_analyze
-    test_directory = results_folder + 'test/' + test_folder
-    predictions_test_directory = results_folder + 'predicionts/' + test_folder"""
-
     test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/test_03/'
 
     predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results/' \

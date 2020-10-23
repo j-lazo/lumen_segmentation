@@ -1,10 +1,11 @@
-project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
-image_modality = 'grayscale'
+project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/'
+image_modality = 'rgb'
 augmented = True
+
 if augmented is True:
     amount_data = '/augmented_data/'
 else:
-    amount_data = '/'
+    amount_data = '/original/'
 
 analyze_validation_set = False
 evaluate_train_dir = False
@@ -341,7 +342,7 @@ callbacks = [
     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10),
     CSVLogger(results_directory + new_results_id + "_data.csv"),
     TensorBoard(),
-    EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)]
+    EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)]
 
 #model_checkpoint = [ModelCheckpoint(project_folder + 'unet_training_' + training_time.strftime("%d_%m_%Y %H_%M") +'_.hdf5'),
 #                   EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)]
@@ -380,6 +381,9 @@ model_history = model.fit(train_dataset,
     validation_steps=valid_steps,
     callbacks=callbacks)
     #class_weight=class_weight)
+
+model.save(results_directory + new_results_id + '_model')
+
 
 print('METRICS')
 print(model_history.history.keys())
@@ -580,12 +584,14 @@ if analyze_validation_set is True:
             results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
 
 plt.figure()
-plt.plot(model_history.history['dice_coef'], '-*')
-plt.plot(model_history.history['val_dice_coef'], '-*')
+plt.plot(model_history.history['dice_coef'], '-o')
+plt.plot(model_history.history['val_dice_coef'], '-o')
 plt.title('model DSC history')
 plt.ylabel('DSC')
 plt.xlabel('epoch')
 plt.legend(['train', 'val'], loc='upper left')
+plt.savefig(''.join([results_directory, 'Dice_coef_', new_results_id, '_.svg']))
+plt.close()
 
 # summarize history for accuracy
 plt.figure()
@@ -595,23 +601,27 @@ plt.title('model accuracy history')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'val'], loc='upper left')
+plt.savefig(''.join([results_directory, 'Accuracy_history_', new_results_id, '_.svg']))
+plt.close()
 
 
 # summarize history for loss
 plt.figure()
-plt.plot(model_history.history['loss'])
-plt.plot(model_history.history['val_loss'])
+plt.plot(model_history.history['loss'], '-o')
+plt.plot(model_history.history['val_loss'], '-o')
 plt.title('model loss history')
 plt.ylabel('DSC loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'valtest'], loc='upper left')
+plt.savefig(''.join([results_directory, 'DSC_loss_history_', new_results_id, '_.svg']))
+plt.close()
 
 
 path_file_1= name_test_csv_file_1
 path_file_2 = name_test_csv_file_2
 path_file_3 = name_test_csv_file_3
 
-print('Dice Coef.')
+print('Dice Coefficient.')
 list_dice_values_file_1 = read_results_csv(path_file_1, 2)
 list_dice_values_file_2 = read_results_csv(path_file_2, 2)
 list_dice_values_file_3 = read_results_csv(path_file_3, 2)
@@ -621,12 +631,13 @@ data = [list_dice_values_file_1, list_dice_values_file_2, list_dice_values_file_
 fig, axs = plt.subplots(1, 3)
 axs[0].boxplot(data[0], 1, 'gD')
 axs[0].set_title('Test dataset 1')
-
 axs[1].boxplot(data[1], 1, 'gD')
 axs[1].set_title('Test dataset 2')
-
 axs[2].boxplot(data[2], 1, 'gD')
 axs[2].set_title('Test dataset 3')
+
+plt.savefig(''.join([results_directory, 'Dice_Coeff_', new_results_id, '_.svg']))
+plt.close()
 
 # sensitivity 
 print('Sensitivity')
@@ -644,9 +655,11 @@ axs[1].boxplot(data[1], 1, 'gD')
 axs[1].set_title('Test dataset 2')
 axs[2].boxplot(data[2], 1, 'gD')
 axs[2].set_title('Test dataset 3')
+plt.savefig(''.join([results_directory, 'Sensitivity_', new_results_id, '_.svg']))
+plt.close()
 
-# specificity   
-print('Specifficity')
+# specificity
+print('Specificity')
 list_dice_values_file_1 = read_results_csv(path_file_1, 4)
 list_dice_values_file_2 = read_results_csv(path_file_2, 4)
 list_dice_values_file_3 = read_results_csv(path_file_3, 4)
@@ -664,6 +677,7 @@ axs[1].set_title('Test dataset 2')
 axs[2].boxplot(data[2], 1, 'gD')
 axs[2].set_title('Test dataset 3')
 
-plt.show()
+plt.savefig(''.join([results_directory, 'Specificity_', new_results_id, '_.svg']))
+plt.close()
 
 
