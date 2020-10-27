@@ -13,10 +13,18 @@ from matplotlib import pyplot as plt
 
 def conver_data_to_pickle(folder, new_folder):
 
-    os.mkdir(os.path.join(folder, new_folder))
-    os.mkdir(os.path.join(folder, new_folder, 'train'))
-    os.mkdir(os.path.join(folder, new_folder, 'train', 'image'))
-    os.mkdir(os.path.join(folder, new_folder, 'train', 'label'))
+    if not os.path.isdir(os.path.join(folder, new_folder)):
+        os.mkdir(os.path.join(folder, new_folder))
+
+    if not os.path.isdir(os.path.join(folder, new_folder, 'train')):
+        os.mkdir(os.path.join(folder, new_folder, 'train'))
+
+    if not os.path.isdir(os.path.join(folder, new_folder, 'train', 'image')):
+        os.mkdir(os.path.join(folder, new_folder, 'train', 'image'))
+
+    if not os.path.isdir(os.path.join(folder, new_folder, 'train', 'label')):
+        os.mkdir(os.path.join(folder, new_folder, 'train', 'label'))
+
     img_size = 128
 
 
@@ -40,18 +48,20 @@ def conver_data_to_pickle(folder, new_folder):
 
         #for j in tqdm(range(len(img_list) - scan_size)):
         flag = True
-        for j, image in enumerate(img_list[:]):
+        for j, image in enumerate(img_list[:10]):
             print(image)
             print(img_clusters)
             name_img = image[:-4]
             number_img = int(name_img.replace('p007_video_4_', ''))
-            num_video.append(number_img)
-            counter = number_img
             img_clusters.append(number_img)
-            if counter == counter + 1 and flag is True:
-                print('reset')
+            counter = number_img
+            print(counter, j, img_clusters)
+
+            if img_clusters == []:
+                img_clusters.append(number_img)
                 flag = True
-            else:
+
+            if img_clusters[-1] != counter -1 and flag is False:
                 img_clusters.clear()
                 flag = False
 
