@@ -7,10 +7,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-"""# Dataset selezionato"""
-"""# Volumi e maschere corrispondenti a coppie"""
-
-
 def convert_data_to_pickle(folder, new_folder):
 
     if not os.path.isdir(os.path.join(folder, new_folder)):
@@ -28,14 +24,10 @@ def convert_data_to_pickle(folder, new_folder):
     if not os.path.isdir(os.path.join(folder, new_folder, 'label')):
         os.mkdir(os.path.join(folder, new_folder, 'label'))
 
-
-
     # ----------------------------------------------------------------
     volume_size = 3
 
-    # TRAINING:
     video_set = os.listdir(folder)
-
     video_set.sort()
     img_clusters_number = []
     img_clusters_name = []
@@ -47,7 +39,6 @@ def convert_data_to_pickle(folder, new_folder):
     mask_list = os.listdir(os.path.join(folder,  'label'))
     mask_list.sort()
 
-    #for j in tqdm(range(len(img_list) - scan_size)):
     for j, image in enumerate(img_list[:]):
         name_img = image[:-4]
         print(image)
@@ -87,8 +78,6 @@ def convert_data_to_pickle(folder, new_folder):
             #masks = np.moveaxis(masks, 0, -2)
             np.save(os.path.join(folder, new_folder, 'image', name_img + '.npy'), frames)
             np.save(os.path.join(folder, new_folder, 'label', name_img + '.npy'), masks)
-
-
 
 
 def main():
