@@ -43,8 +43,8 @@ def generate_training_and_validation_sets(current_directory, output_directory, t
 
 def main():
 
-    data_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/all_data/'
-    output_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/train_val_test/'
+    data_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/all_data/'
+    output_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/train_val_test/'
     generate_training_and_validation_sets(data_directory, output_directory, training_percentage=0.65)
 
 

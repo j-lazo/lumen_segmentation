@@ -82,8 +82,8 @@ def copy_images_and_label(source_folder, destination_folder, folder=''):
 
 def main():
 
-    source_folders = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/all_data/patient_cases/'
-    destination_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/all_data/all/'
+    source_folders = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/all_data/patient_cases/'
+    destination_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/all_data/all/'
     exceptions = ['all']
     gather_all_data(source_folders, destination_folder, exceptions)
 

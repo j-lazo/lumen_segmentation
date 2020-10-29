@@ -333,18 +333,18 @@ def crop_images(image_directory, roi, string_to_add):
 
 def main():
 
-    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/test_03/'
+    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/test/test_03/'
 
-    predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results/' \
-                                 'ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/predictions/test_03/'
+    predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results/' \
+                                 'ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/predictions/test_03/'
 
-    name_test_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
-                         '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
-                         'results_evaluation_test_03_ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22_.csv'
+    name_test_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results/' \
+                         'ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/' \
+                         'results_evaluation_test_03_ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16_.csv'
 
 
-    save_directory_test = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/results' \
-                         '/ResUnet_lr_0.001_bs_16_grayscale_22_10_2020_10_22/' \
+    save_directory_test = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results' \
+                         '/ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/' \
                          'comparison_predictions/test_03/'
 
     compare_results(test_directory, predictions_test_directory, name_test_csv_file, save_directory_test)

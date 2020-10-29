@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from os import listdir
 
+
 def load_test_data(X_test_path, Y_test_path):
     print('-' * 30)
     print('load test images...')
@@ -14,8 +15,10 @@ def load_test_data(X_test_path, Y_test_path):
     test_dir.sort()
     test_mask_dir = listdir(Y_test_path)
     test_mask_dir.sort()
-    imgs_test = np.empty([0, 4, 128, 128, 3], dtype=np.float32)
-    mask_test = np.empty([0, 4, 128, 128, 3], dtype=np.float32)
+    img_size = 256
+    volume_size = 3
+    imgs_test = np.empty([0, volume_size, img_size, img_size, 3], dtype=np.float32)
+    mask_test = np.empty([0, volume_size, img_size, img_size, 3], dtype=np.float32)
     for t in tqdm(test_dir[:6]):
         X_vol = np.load(os.path.join(X_test_path, t), allow_pickle=True)
         #X_vol = np.moveaxis(X_vol, -2, 0)
@@ -46,18 +49,36 @@ def main():
 
     images, labels = load_test_data(path_images, path_labels)
     print(np.shape(images), np.shape(labels))
-    index = 0
+    index = 5
 
-    image_tes = images[index][0]
-    mask_test = labels[index][0]
+    image_tes_1 = images[index][0]
+    mask_test_1 = labels[index][0]
 
-    print(np.shape(image_tes), np.shape(image_tes))
-    print(np.shape(mask_test), np.shape(mask_test))
+    image_tes_2 = images[index][1]
+    mask_test_2 = labels[index][1]
+
+    image_tes_3 = images[index][2]
+    mask_test_3 = labels[index][2]
+
+
     plt.figure()
-    plt.subplot(121)
-    plt.imshow(image_tes)
-    plt.subplot(122)
-    plt.imshow(mask_test)
+
+    plt.subplot(421)
+    plt.imshow(image_tes_1)
+    plt.subplot(422)
+    plt.imshow(mask_test_1)
+
+    plt.subplot(423)
+    plt.imshow(image_tes_2)
+    plt.subplot(424)
+    plt.imshow(mask_test_2)
+
+    plt.subplot(425)
+    plt.imshow(image_tes_3)
+    plt.subplot(426)
+    plt.imshow(mask_test_3)
+
+
     plt.show()
 
 
