@@ -1,5 +1,5 @@
 project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/'
-image_modality = 'rgb'
+image_modality = 'grayscale'
 augmented = True
 
 if augmented is True:
@@ -7,7 +7,7 @@ if augmented is True:
 else:
     amount_data = '/original/'
 
-analyze_validation_set = False
+analyze_validation_set = True
 evaluate_train_dir = False
 
 import sys
@@ -142,7 +142,8 @@ def conv_block(x, num_filters):
 
 def build_model():
     size = 256
-    num_filters = [16, 32, 48, 64]
+    num_filters = [16, 32, 48,  64]
+    #num_filters = [64, 128, 256, 512]
     inputs = Input((size, size, 3))
 
     skip_x = []
@@ -150,8 +151,10 @@ def build_model():
     ## Encoder
     for f in num_filters:
         x = conv_block(x, f)
+        print(str(x.shape.as_list()))
         skip_x.append(x)
         x = MaxPool2D((2, 2))(x)
+        print(str(x.shape.as_list()))
 
     ## Bridge
     x = conv_block(x, num_filters[-1])
@@ -273,7 +276,8 @@ def dice(im1, im2, smooth=1):
     # Compute Dice coefficient
     intersection = np.logical_and(im1, im2)
 
-    return 2. * (intersection.sum() + smooth) / (im1.sum() + im2.sum() + smooth)
+    return 2. * intersection.sum() / (im1.sum() + im2.sum())
+    #return 2. * (intersection.sum() + smooth) / (im1.sum() + im2.sum() + smooth)
 
 
 def read_img(dir_image):
@@ -295,6 +299,77 @@ def read_results_csv(file_path, row_id=0):
             dice_values.append(float(row[row_id]))
 
         return dice_values
+
+
+def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
+
+    output_directory = 'predictions/' + output_name + '/'
+    batch_size = 16
+    (test_x, test_y) = load_data(directory_to_evaluate)
+    test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
+    test_steps = (len(test_x)//batch_size)
+
+    if len(test_x) % batch_size != 0:
+        test_steps += 1
+
+    # evaluate the model in the test dataset
+    model.evaluate(test_dataset, steps=test_steps)
+    test_steps = (len(test_x)//batch_size)
+    if len(test_x) % batch_size != 0:
+        test_steps += 1
+
+    for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
+        print(i, x)
+        directory_image = x
+        x = read_image_test(x)
+        y = read_mask_test(y)
+        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+        print(directory_to_evaluate + image_modality + '/')
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
+        print(name_original_file)
+        results_name = ''.join([results_directory, output_directory, name_original_file])
+        print(results_name)
+        cv2.imwrite(results_name, y_pred * 255.0)
+
+    # save the results of the test dataset in a CSV file
+    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
+    result_mask_dir = results_directory + output_directory
+
+    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
+                               isfile(join(ground_truth_imgs_dir, file))]
+    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+    results_dice = []
+    results_sensitivity = []
+    results_specificity = []
+
+    for image in ground_truth_image_list[:]:
+
+        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
+        if result_image is not None:
+            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
+            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
+            dice_val = dice(original_mask, predicted_mask)
+            results_dice.append(dice_val)
+            sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
+            results_sensitivity.append(sensitivity)
+            results_specificity.append(specificity)
+
+        else:
+            print(image, 'not found in results list')
+
+    name_test_csv_file = ''.join([results_directory, 'results_evaluation_',
+                                  output_name,
+                                  '_',
+                                  new_results_id,
+                                  '_.csv'])
+
+    with open(name_test_csv_file, mode='w') as results_file:
+        results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for i, file in enumerate(ground_truth_image_list):
+            results_file_writer.writerow(
+                [str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+
+    return name_test_csv_file
 
 
 # ------------------- Define training and validation data -----------------------------------
@@ -413,78 +488,7 @@ with open(name_performance_metrics_file, mode='w') as results_file:
                                       model_history.history[list_keys[10]][i],
                                       model_history.history[list_keys[11]][i]])
 
-def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
-
-    output_directory = 'predictions/' + output_name + '/'
-    batch_size = 16
-    (test_x, test_y) = load_data(directory_to_evaluate)
-    test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
-    test_steps = (len(test_x)//batch_size)
-
-    if len(test_x) % batch_size != 0:
-        test_steps += 1
-
-    # evaluate the model in the test dataset
-    model.evaluate(test_dataset, steps=test_steps)
-    test_steps = (len(test_x)//batch_size)
-    if len(test_x) % batch_size != 0:
-        test_steps += 1
-
-    for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
-        print(i, x)
-        directory_image = x
-        x = read_image_test(x)
-        y = read_mask_test(y)
-        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-        print(directory_to_evaluate + image_modality + '/')
-        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
-        print(name_original_file)
-        results_name = ''.join([results_directory, output_directory, name_original_file])
-        print(results_name)
-        cv2.imwrite(results_name, y_pred * 255.0)
-
-    # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
-    result_mask_dir = results_directory + output_directory
-
-    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
-                               isfile(join(ground_truth_imgs_dir, file))]
-    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-    results_dice = []
-    results_sensitivity = []
-    results_specificity = []
-
-    for image in ground_truth_image_list[:]:
-
-        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
-        if result_image is not None:
-            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
-            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
-            dice_val = dice(original_mask, predicted_mask)
-            results_dice.append(dice_val)
-            sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
-            results_sensitivity.append(sensitivity)
-            results_specificity.append(specificity)
-
-        else:
-            print(image, 'not found in results list')
-
-    name_test_csv_file = ''.join([results_directory, 'results_evaluation_',
-                                  output_name,
-                                  '_',
-                                  new_results_id,
-                                  '_.csv'])
-
-    with open(name_test_csv_file, mode='w') as results_file:
-        results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for i, file in enumerate(ground_truth_image_list):
-            results_file_writer.writerow(
-                [str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
-
-    return name_test_csv_file
-
-
-# evaluate and predict in the test dataset(s)
+# ------------- evaluate and predict in the test dataset(s)-----------------
 os.mkdir(results_directory + 'predictions/')
 os.mkdir(results_directory + 'predictions/test_01/')
 os.mkdir(results_directory + 'predictions/test_02/')
@@ -517,71 +521,18 @@ if len(train_x) % 16 != 0:
 print('Evaluation Train Dataset')
 model.evaluate(train_dataset, steps=train_steps)
 
-if evaluate_train_dir is True:
-    for i, (x, y) in tqdm(enumerate(zip(train_x, train_y)), total=len(train_x)):
-        print(i, x)
-        directory_image = x
-        x = read_image_test(x)
-        y = read_mask_test(y)
-        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-        height, width, _ = x.shape
 
-        name_original_file = directory_image.replace(project_folder + 'train/image/', '')
-        results_name = ''.join([project_folder, 'predictions_train/', name_original_file])
-        cv2.imwrite(results_name, y_pred * 255.0)
-
-# save the results of the validation dataset in a CSV file
 if analyze_validation_set is True:
 
-    now=datetime.now()
-    #predictions in the validation dataset
-    for i, (x, y) in tqdm(enumerate(zip(valid_x, valid_y)), total=len(valid_x)):
-        print(i, x)
-        directory_image = x
-        x = read_image_test(x)
-        y = read_mask_test(y)
-        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+    os.mkdir(results_directory + 'predictions/val/')
+    evaluation_directory_val = project_folder + "val/original/"
+    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_val, results_directory, 'val')
 
-        height, width, _ = x.shape
+if evaluate_train_dir is True:
 
-        name_original_file = directory_image.replace(project_folder + 'val/image/', '')
-        results_name = ''.join([project_folder, 'predictions_val/', name_original_file])
-        cv2.imwrite(results_name, y_pred * 255.0)
-
-    ground_truth_imgs_dir = results_directory + 'val/label/'
-    result_mask_dir = results_directory + 'predictions_val/'
-
-    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
-
-    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-    results_dice = []
-    results_sensitivity = []
-    results_specificity = []
-
-    for image in ground_truth_image_list[:]:
-
-        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
-        if result_image is not None:
-            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
-            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
-            dice_val = dice(original_mask, predicted_mask)
-
-            # print(dice_val, 1-dice_val)
-            results_dice.append(dice_val)
-
-            sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
-            results_sensitivity.append(sensitivity)
-            results_specificity.append(specificity)
-
-            # print(sensitivity, specificity)
-        else:
-            print(image, 'not found in results list')
-
-    name_validation_csv_file = ''.join([project_folder, 'results_validation_', now.strftime("%d_%m_%Y_%H_%M"), '_.csv'])
-    with open(name_validation_csv_file, mode='w') as results_file:
-        results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for i, file in enumerate(ground_truth_image_list):
-            results_file_writer.writerow([str(i), file, results_dice[i], results_sensitivity[i], results_specificity[i]])
+    os.mkdir(results_directory + 'predictions/train/')
+    evaluation_directory_train = project_folder + "train/label/"
+    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_train, results_directory, 'train')
 
 plt.figure()
 plt.plot(model_history.history['dice_coef'], '-o')
@@ -603,7 +554,6 @@ plt.xlabel('epoch')
 plt.legend(['train', 'val'], loc='upper left')
 plt.savefig(''.join([results_directory, 'Accuracy_history_', new_results_id, '_.svg']))
 plt.close()
-
 
 # summarize history for loss
 plt.figure()
