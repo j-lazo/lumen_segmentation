@@ -1,5 +1,3 @@
-import numpy as np
-import cv2
 import os
 import csv
 import shutil
@@ -9,13 +7,13 @@ def read_results_csv(file_path, row_id=0):
     with open(file_path, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
-            selected_values.append(float(row[row_id]))
+            selected_values.append((row[row_id]))
 
         return selected_values
 
 
 def select_samples(source_folder, destination_folder, samples_list):
-    destination_folder = samples_list + 'samples/'
+    destination_folder = destination_folder + 'samples/'
     if not(os.path.isdir(destination_folder)):
         os.mkdir(destination_folder)
 
@@ -30,23 +28,22 @@ def select_samples(source_folder, destination_folder, samples_list):
     images_list = os.listdir(source_folder)
 
     for counter, image in enumerate(samples_list):
-        if os.path.isfile(source_folder + samples_list):
+        if os.path.isfile(source_folder + image):
             shutil.copy(source_folder + image, destination_folder + image)
 
 
 def main():
 
     base_dir = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
-               'data/old_lumen_data/results/'
+               'data/lumen_data/results/'
 
     model = 'comparison_MaskRCNN_vs_ResUnet_grayscale/'
 
     test_folder = 'test_01/'
 
-    source_folder = ''.jopin(base_dir, model, 'predictions', test_folder)
-
+    source_folder = ''.join([base_dir, model, test_folder])
     csv_file_samples = '/home/nearlab/Jorge/current_work/' \
-                       'lumen_segmentation/data/lumen_data' \
+                       'lumen_segmentation/data/lumen_data/' \
                        'list_samples.csv'
 
     list_samples = read_results_csv(csv_file_samples)
