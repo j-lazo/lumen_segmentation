@@ -34,8 +34,11 @@ from os.path import isfile, join
 from datetime import datetime
 import csv
 
-project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
-folder_to_test = 'test_02'
+project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                 'data/' \
+                 'lumen_data/'
+model_to_test = 'ResUnet_lr_0.001_bs_16_grayscale_18_11_2020_15_09'
+folder_to_test = 'test_01'
 
 
 def read_results_csv(file_path, row_id=0):
@@ -58,7 +61,7 @@ def read_results_csv_str(file_path, row_id=0):
         return dice_values
 
 
-def calculae_rates(image_1, image_2):
+def calculate_rates(image_1, image_2):
 
     image_1 = np.asarray(image_1).astype(np.bool)
     image_2 = np.asarray(image_2).astype(np.bool)
@@ -100,11 +103,11 @@ def read_img(dir_image):
     img = (img > 0.9) * 1.0
     return img
 
-# save the resutls of the validation dataset in a CSV file
-    
+# ------ --- aqui empieza lo mero bueno -----
+# ---------- save the resutls of the validation dataset in a CSV file
 
-model_to_test = 'ResUnet_lr_0.001_bs_16_grayscale_21_10_2020 19_48'
-ground_truth_imgs_dir= project_folder + 'test/' + folder_to_test + '/label/'
+
+ground_truth_imgs_dir = project_folder + 'test/' + folder_to_test + '/label/'
 result_mask_dir = project_folder + 'results/' + model_to_test + '/predictions/' + folder_to_test + '/'
 
 ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if isfile(join(ground_truth_imgs_dir, file))]
@@ -117,7 +120,6 @@ results_accuracy = []
 
 for image in ground_truth_image_list[:]:
     print(image)
-    print(results_image_list)
     result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
     if result_image is not None:
         original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
@@ -127,7 +129,7 @@ for image in ground_truth_image_list[:]:
         #print(dice_val, 1-dice_val)
         results_dice.append(dice_val)
         
-        sensitivity, specificity, accuracy = calculae_rates(original_mask, predicted_mask)
+        sensitivity, specificity, accuracy = calculate_rates(original_mask, predicted_mask)
         results_sensitivity.append(sensitivity)
         results_specificity.append(specificity)
         results_accuracy.append(accuracy)
@@ -148,7 +150,13 @@ results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(r
 
 
 now = datetime.now()
-name_test_csv_file = ''.join([project_folder, 'results_test_', '.csv']) 
+name_test_csv_file = ''.join([project_folder, 'results/',
+                              model_to_test, '/',
+                              'results_evaluation',
+                              folder_to_test, '_',
+                              model_to_test,
+                              '_new.csv'])
+print('saved in :', name_test_csv_file)
 with open(name_test_csv_file, mode='w') as results_file:
     results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     for i, file in enumerate(ground_truth_image_list):
