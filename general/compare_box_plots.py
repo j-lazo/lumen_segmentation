@@ -162,13 +162,22 @@ def compare_boxplots(data, labels, Title):
                  weight=weights[k], color=box_colors[k])
     
     # Finally, add a basic legend
-    fig.text(0.10, 0.1, 'Grayscale dataset',
+
+    fig.text(0.10, 0.1, 'Grayscale',
              backgroundcolor=box_colors[0], color='black', weight='roman',
              size='large')
-    
-    fig.text(0.10, 0.045, 'Color dataset',
+
+    fig.text(0.10, 0.045, 'RGB',
              backgroundcolor=box_colors[1],
              color='white', weight='roman', size='large')
+
+    """fig.text(0.10, 0.1, 'Grayscale dataset',
+             backgroundcolor=box_colors[0], color='black', weight='roman',
+             size='large')
+
+    fig.text(0.10, 0.045, 'Color dataset',
+             backgroundcolor=box_colors[1],
+             color='white', weight='roman', size='large')"""
     
     fig.text(0.10, 0.005, '*', color='white', backgroundcolor='silver',
              weight='roman', size='large')
@@ -189,32 +198,46 @@ def read_results_csv(file_path, row_id=0):
 
 def main():
     
-    #FCN8
-    #polar
-    path_file_1 = '/home/nearlab/Jorge/ICPR2020/data/lumen_grayscale_mask_rcnn/results_test_.csv'
-    path_file_2 = '/home/nearlab/Jorge/ICPR2020/data/lumen_polar_grayscale_mask_rcnn/results_test_.csv'
-    
-    #unet skip connections
- 
-    path_file_5 = '/home/nearlab/Jorge/ICPR2020/data/lumen_enlarged_dataset_grayscale/results_test_.csv'
-    path_file_6 = '/home/nearlab/Jorge/ICPR2020/data/lumen_polar_grayscale/results_test_.csv'
-    
+    path_file_1 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  '3x3_grayscale_dataset/results/' \
+                  'ResUnet_lr_0.001_bs_16_grayscale_16_11_2020_19_37/' \
+                  'results_evaluationtest_01_ResUnet_lr_0.001_bs_16_grayscale_16_11_2020_19_37_new.csv'
 
-   
+    path_file_2 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  '3x3_grayscale_dataset/results/' \
+                  'ResUnet_lr_1e-05_bs_16_grayscale_16_11_2020_19_32/' \
+                  'results_evaluationtest_01_ResUnet_lr_1e-05_bs_16_grayscale_16_11_2020_19_32_new.csv'
+
+    path_file_3 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  'lumen_data/results/' \
+                  'ResUnet_lr_0.001_bs_16_hsv_14_11_2020_20_06/' \
+                  'results_evaluation_test_02_ResUnet_lr_0.001_bs_16_hsv_14_11_2020_20_06_.csv'
+
+    path_file_4 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  'lumen_data/results/' \
+                  'ResUnet_lr_0.001_bs_16_rgb_06_11_2020_00_51/' \
+                  'results_evaluation_test_02_ResUnet_lr_0.001_bs_16_rgb_06_11_2020_00_51_.csv'
+
+    path_file_5 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  'lumen_data/results/' \
+                  'MaskRCNN_thershold_0.8_grayscale/' \
+                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_grayscale_.csv'
+
+    path_file_6 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                  'lumen_data/results/' \
+                  'MaskRCNN_thershold_0.8_rgb/' \
+                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_rgb_.csv'
+
     #SAN network
-    
     #path_file_7 = '/home/jlazo/Desktop/current_work/ICPR2020/data/enlarged_dataset/ensembles'
     #restore the one bellow
-    path_file_7 = '/home/nearlab/Jorge/ICPR2020/data/lumen_polar_grayscale/results_test_.csv'
-    path_file_8 = '/home/nearlab/Jorge/ICPR2020/data/lumen_enlarged_dataset_grayscale/results_test_10_07_2020 19_56_.csv'
+    path_file_7 = path_file_1
+    path_file_8 = path_file_2
     
     #unet bn
-    path_file_3 = path_file_5
-    path_file_4 = path_file_6
 
-    labels = ['Mask RCNN', 'Proposed  \n  Model', 'Residual \n U-Net',]
+    labels = ['ResUnet', 'Proposed', 'Mask-RCNN']
 
-    
     data_experiment_1 = read_results_csv(path_file_1, 2)
     data_experiment_2 = read_results_csv(path_file_2, 2)
     data_experiment_3 = read_results_csv(path_file_3, 2)
