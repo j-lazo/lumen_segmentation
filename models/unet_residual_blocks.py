@@ -60,21 +60,15 @@ def load_data(path):
     return (images, masks)
       
 
-def read_image(path):
-
-    path = path.decode()
-    x = cv2.imread(path, 1)
+def read_image_test(path):
+    x = cv2.imread(path, cv2.IMREAD_COLOR)
     x = cv2.resize(x, (256, 256))
     x = x/255.0
     return x
 
-
-def read_mask(path):
-    path = path.decode()
-    x = cv2.imread(path)
-    x = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
+def read_mask_test(path):
+    x = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     x = cv2.resize(x, (256, 256))
-    x = x/255.0
     x = np.expand_dims(x, axis=-1)
     return x
 
@@ -86,7 +80,7 @@ def tf_parse(x, y):
         return x, y
 
     x, y = tf.numpy_function(_parse, [x, y], [tf.float64, tf.float64])
-    x.set_shape([256, 256, 3])
+    x.set_shape([3, 256, 256, 3])
     y.set_shape([256, 256, 1])
     return x, y
 
@@ -149,20 +143,17 @@ def conv_block(x, num_filters):
 
 def build_model():
     size = 256
-    #num_filters = [16, 32, 48,  64]
-    num_filters = [64, 48, 32, 16]
+    num_filters = [16, 32, 48,  64]
+    #num_filters = [64, 48, 32, 16]
     #num_filters = [64, 128, 256, 512]
-    inputs = Input((size, size, 3)) ## <-- change this ok?!!
-
+    inputs = Input((3, size, size, 3))
     skip_x = []
     x = inputs
-    ## Encoder
     for f in num_filters:
         x = conv_block(x, f)
         print(str(x.shape.as_list()))
         skip_x.append(x)
         x = MaxPool2D((2, 2))(x)
-        print(str(x.shape.as_list()))
 
     ## Bridge
     x = conv_block(x, num_filters[-1])
@@ -327,7 +318,7 @@ def read_results_csv(file_path, row_id=0):
 def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
 
     output_directory = 'predictions/' + output_name + '/'
-    batch_size = 16
+    batch_size = 8
     (test_x, test_y) = load_data(directory_to_evaluate)
     test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
     test_steps = (len(test_x)//batch_size)
