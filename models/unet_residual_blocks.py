@@ -1,7 +1,8 @@
 project_folder = '/home/nearlab/Jorge/current_work/' \
                  'lumen_segmentation/data/lumen_data/'
 
-image_modality = 'grayscale'
+# options: rgb, grayscale, hsv, lab, ycrcb
+image_modality = 'rgb'
 
 augmented = True
 
@@ -17,6 +18,7 @@ import sys
 sys.path.append(project_folder)
 
 import os
+import time
 import numpy as np
 import cv2
 from glob import glob
@@ -26,6 +28,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from tqdm import tqdm
 import tensorflow as tf
 import keras.backend as K
+import copy
 from tensorflow.keras.backend import sum as suma
 from tensorflow.keras.backend import mean
 from tensorflow.keras.layers import *
@@ -46,25 +49,66 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
 
 
-
 def load_data(path):
     print(path)
-    path_images = ''.join([path, 'image/', image_modality, "/*"])
+    path_images = ''.join([path, 'image/npy/*'])
     path_labels = ''.join([path, "label/*"])
+
     images = sorted(glob(path_images))
     masks = sorted(glob(path_labels))
-    total_size_images = len(images)
-    total_size_labels = len(masks)
-    print('total size images:', total_size_images, path_images)
-    print('total size labels:', total_size_labels, path_labels)
+    print('total size images:', len(images), path_images)
+    print('total size labels:', len(masks), path_labels)
     return (images, masks)
       
 
-def read_image_test(path):
-    x = cv2.imread(path, cv2.IMREAD_COLOR)
-    x = cv2.resize(x, (256, 256))
-    x = x/255.0
-    return x
+def change_img_modality(img, img_modality='rgb'):
+    shape = np.shape(img)
+    if img_modality == 'grayscale':
+        zeros = np.zeros([np.shape(img)[0], np.shape(img)[1], 3])
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        zeros[:, :, 0] = gray
+        zeros[:, :, 1] = gray
+        zeros[:, :, 2] = gray
+        out_img = copy.copy(zeros)
+
+    elif img_modality == 'hsv':
+        out_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    elif img_modality == 'lab':
+        out_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+
+    elif img_modality == 'ycrcb':
+        out_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+
+    elif img_modality == 'b':
+        out_img = np.zeros([shape[0], shape[1], shape[2]])
+        out_img[:, :, 0] = img[:, :, 0]
+        out_img[:, :, 1] = img[:, :, 0]
+        out_img[:, :, 2] = img[:, :, 0]
+
+    elif img_modality == 'g':
+        out_img = np.zeros([shape[0], shape[1], shape[2]])
+        out_img[:, :, 0] = img[:, :, 1]
+        out_img[:, :, 1] = img[:, :, 1]
+        out_img[:, :, 2] = img[:, :, 1]
+
+    elif img_modality == 'r':
+        out_img = np.zeros([shape[0], shape[1], shape[2]])
+        out_img[:, :, 0] = img[:, :, 2]
+        out_img[:, :, 1] = img[:, :, 2]
+        out_img[:, :, 2] = img[:, :, 2]
+    else:
+        out_img = img
+
+    return out_img
+
+
+def mask_parse(mask):
+    mask = np.squeeze(mask)
+    mask = [mask, mask, mask]
+    mask = np.transpose(mask, (1, 2, 0))
+    return mask
+
 
 def read_mask_test(path):
     x = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
@@ -73,21 +117,75 @@ def read_mask_test(path):
     return x
 
 
-def tf_parse(x, y):
-    def _parse(x, y):
-        x = read_image(x)
+def read_image_test(path_img, img_modality='rgb'):
+
+    target_size_x = 256
+    targe_size_y = 256
+
+    if path_img[-4:] == '.npy':
+        x = np.load(path_img)
+        x = cv2.resize(x, (target_size_x, targe_size_y))
+
+    else:
+        x = cv2.imread(path_img, 1)
+        x = cv2.resize(x, (target_size_x, targe_size_y))
+
+    x = change_img_modality(x, img_modality)
+    x = x / 255.0
+    return x
+
+def read_image(path_img, img_modality='rgb'):
+    target_size_x = 256
+    targe_size_y = 256
+
+    path_img = path_img.decode()
+    if path_img[-4:] == '.npy':
+        x = np.load(path_img)
+        x = cv2.resize(x, (target_size_x, targe_size_y))
+
+    else:
+        x = cv2.imread(path_img, 1)
+        x = cv2.resize(x, (target_size_x, targe_size_y))
+
+    x = change_img_modality(x, img_modality)
+    x = x/255.0
+    return x
+
+
+def read_mask(path_mask):
+
+    path_mask = path_mask.decode()
+    if path_mask[-4:] == '.npy':
+        x = np.load(path_mask)
+        x = cv2.resize(x, (256, 256))
+
+    else:
+        x = cv2.imread(path_mask)
+        x = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
+        x = cv2.resize(x, (256, 256))
+
+    x = x/255.0
+    x = np.expand_dims(x, axis=-1)
+    return x
+
+
+def tf_parse(x, y, img_modality):
+
+    def _parse(x, y, img_modality):
+        x = read_image(x, img_modality=img_modality)
         y = read_mask(y)
         return x, y
-
-    x, y = tf.numpy_function(_parse, [x, y], [tf.float64, tf.float64])
-    x.set_shape([3, 256, 256, 3])
+    x, y = tf.numpy_function(_parse, [x, y, img_modality], [tf.float64, tf.float64])
+    x.set_shape([256, 256, 3])
     y.set_shape([256, 256, 1])
     return x, y
 
 
-def tf_dataset(x, y, batch=8):
+def tf_dataset(x, y, batch=2, img_modality='rgb'):
     dataset = tf.data.Dataset.from_tensor_slices((x, y))
-    dataset = dataset.map(tf_parse)
+    #dataset = dataset.map(tf_parse)
+    dataset = dataset.map(lambda p, w: tf_parse(p, w,
+                                               img_modality=img_modality))
     dataset = dataset.batch(batch)
     dataset = dataset.repeat()
     return dataset
@@ -112,10 +210,12 @@ def iou(y_true, y_pred, smooth = 1e-15):
         return x
     return tf.numpy_function(f, [y_true, y_pred], tf.float32)"""
 
+
 def dice_coef(y_true, y_pred, smooth=1):
     intersection = K.sum(y_true * y_pred, axis=[1,2,3])
     union = K.sum(y_true, axis=[1,2,3]) + K.sum(y_pred, axis=[1,2,3])
     return K.mean((2. * intersection + smooth) / (union + smooth), axis=0)
+
 
 def dice_coef_loss(y_true, y_pred):
     return 1-dice_coef(y_true, y_pred) 
@@ -145,13 +245,11 @@ def build_model():
     size = 256
     num_filters = [16, 32, 48,  64]
     #num_filters = [64, 48, 32, 16]
-    #num_filters = [64, 128, 256, 512]
-    inputs = Input((3, size, size, 3))
+    inputs = Input((size, size, 3))
     skip_x = []
     x = inputs
     for f in num_filters:
         x = conv_block(x, f)
-        print(str(x.shape.as_list()))
         skip_x.append(x)
         x = MaxPool2D((2, 2))(x)
 
@@ -172,27 +270,6 @@ def build_model():
     x = Activation("sigmoid")(x)
 
     return Model(inputs, x)
-
-
-def mask_parse(mask):
-    mask = np.squeeze(mask)
-    mask = [mask, mask, mask]
-    mask = np.transpose(mask, (1, 2, 0))
-    return mask
-
-
-def read_image_test(path):
-    x = cv2.imread(path, cv2.IMREAD_COLOR)
-    x = cv2.resize(x, (256, 256))
-    x = x/255.0
-    return x
-
-
-def read_mask_test(path):
-    x = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    x = cv2.resize(x, (256, 256))
-    x = np.expand_dims(x, axis=-1)
-    return x
 
 
 def get_mcc(groundtruth_list, predicted_list):
@@ -301,10 +378,6 @@ def read_img(dir_image):
     return img
 
 
-def make_predictions():
-    return 0
-
-
 def read_results_csv(file_path, row_id=0):
     dice_values = []
     with open(file_path, 'r') as file:
@@ -315,12 +388,15 @@ def read_results_csv(file_path, row_id=0):
         return dice_values
 
 
-def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
+def evaluate_and_predict(model, directory_to_evaluate,
+                         results_directory, output_name,
+                         image_modality):
 
     output_directory = 'predictions/' + output_name + '/'
     batch_size = 8
     (test_x, test_y) = load_data(directory_to_evaluate)
-    test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
+    test_dataset = tf_dataset(test_x, test_y, batch=batch_size,
+                              img_modality=image_modality)
     test_steps = (len(test_x)//batch_size)
 
     if len(test_x) % batch_size != 0:
@@ -335,49 +411,55 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
     for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
         print(i, x)
         directory_image = x
-        x = read_image_test(x)
-        y = read_mask_test(y)
-        y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
-        results_name = ''.join([results_directory, output_directory, name_original_file])
-        cv2.imwrite(results_name, y_pred * 255.0)
+        x = read_image_test(x, image_modality)
+        #y_predicted = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
+        y_predicted = model.predict(np.expand_dims(x, axis=0))
+        y_predicted = y_predicted[0]
+        y_predicted[:, :, :][y_predicted[:, :, :] > 0.5] = 1
+        y_predicted[:, :, :][y_predicted[:, :, :] <= 0.5] = 0
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/npy/']), '')
+        output_name_image = name_original_file[:-4]
+        results_name = ''.join([results_directory, output_directory,
+                                output_name_image, '.png'])
+        print(i, results_name)
+        cv2.imwrite(results_name, y_predicted * 255.0)
 
     # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
+    # ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
     result_mask_dir = results_directory + output_directory
 
-    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
-                               isfile(join(ground_truth_imgs_dir, file))]
-    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
-    results_dice = []
-    results_sensitivity = []
-    results_specificity = []
+    # ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
+    #                           isfile(join(ground_truth_imgs_dir, file))]
+    results_label_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+
     output_directory = 'predictions/' + output_name + '/'
-    batch_size = 16
-    (test_x, test_y) = load_data(directory_to_evaluate)
-    test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
-    test_steps = (len(test_x) // batch_size)
+    #batch_size = 8
+    #(test_x, test_y) = load_data(directory_to_evaluate)
+    #test_dataset = tf_dataset(test_x, test_y, batch=batch_size,
+    #                          img_modality=image_modality)
+    #test_steps = (len(test_x) // batch_size)
 
     # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
-    ground_truth_labels_dir = directory_to_evaluate + 'label/'
-    result_mask_dir = results_directory + output_directory
+    # ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
 
-    ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
-                               isfile(join(ground_truth_imgs_dir, file))]
-    results_image_list = [file for file in listdir(result_mask_dir) if isfile(join(result_mask_dir, file))]
+    ground_truth_labels_dir = directory_to_evaluate + 'label_image/'
+    ground_truth_label_list = [file for file in listdir(ground_truth_labels_dir)
+                               if isfile(join(ground_truth_labels_dir, file))]
+    results_label_list = [file for file in listdir(result_mask_dir)
+                          if isfile(join(result_mask_dir, file))]
     results_dice = []
     results_sensitivity = []
     results_specificity = []
     results_accuracy = []
 
-    for image in ground_truth_image_list[:]:
+    for image in ground_truth_label_list[:]:
 
-        result_image = [name for name in results_image_list if image[-12:] == name[-12:]][0]
-        if result_image is not None:
+        #result_image = [name for name in results_label_list if image[:] == name[:]][0]
+        if image in results_label_list:
+        #if result_image is not None:
 
             original_mask = read_img(''.join([ground_truth_labels_dir, image]))
-            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
+            predicted_mask = read_img(''.join([result_mask_dir, image]))
             dice_val = dice(original_mask, predicted_mask)
             results_dice.append(dice_val)
             sensitivity, specificity, accuracy = calculate_rates(original_mask, predicted_mask)
@@ -396,7 +478,7 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
 
     with open(name_test_csv_file, mode='w') as results_file:
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        for i, file in enumerate(ground_truth_image_list):
+        for i, file in enumerate(ground_truth_label_list):
             results_file_writer.writerow(
                 [str(i), file, results_dice[i],
                  results_sensitivity[i],
@@ -424,11 +506,13 @@ print('Data validation: ', val_data_used)
 
 # ------------------- Hyperparameters -----------------------------------
 batch = 8
-lr = 1e-3
-epochs = 900
+lr = 1e-4
+epochs = 500
 
-train_dataset = tf_dataset(train_x, train_y, batch=batch)
-valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
+train_dataset = tf_dataset(train_x, train_y, batch=batch,
+                           img_modality=image_modality)
+valid_dataset = tf_dataset(valid_x, valid_y, batch=batch,
+                           img_modality=image_modality)
 
 opt = tf.keras.optimizers.Adam(lr)
 metrics = ["acc", tf.keras.metrics.Recall(),
@@ -452,7 +536,8 @@ new_results_id = ''.join(['ResUnet',
                            ])
 
 results_directory = ''.join([project_folder, 'results/', new_results_id, '/'])
-os.mkdir(results_directory)
+if not os.path.isdir(results_directory):
+    os.mkdir(results_directory)
 
 callbacks = [
     ModelCheckpoint(results_directory + new_results_id + "_model.h5"),
@@ -460,16 +545,6 @@ callbacks = [
     CSVLogger(results_directory + new_results_id + "_data.csv"),
     TensorBoard(),
     EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)]
-
-#model_checkpoint = [ModelCheckpoint(project_folder + 'unet_training_' + training_time.strftime("%d_%m_%Y %H_%M") +'_.hdf5'),
-#                   EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)]
-#class_1_weight = 0.55
-#class_2_weight = 5.02
-#class_weight = [class_1_weight, class_2_weight, 1.0, 3.4]
-
-#weight_for_0 = 0.55
-#weight_for_1 = 5.02
-#class_weight = {0:weight_for_0, 1:weight_for_1}
 
 #with CustomObjectScope({'iou': iou}):
 #    model_dir = project_folder + "files/model.h5"
@@ -491,6 +566,7 @@ if len(train_x) % batch != 0:
 if len(valid_x) % batch != 0:
     valid_steps += 1
 
+start_time = time.time()
 model_history = model.fit(train_dataset,
     validation_data=valid_dataset,
     epochs=epochs,
@@ -501,7 +577,7 @@ model_history = model.fit(train_dataset,
 
 model.save(results_directory + new_results_id + '_model')
 
-
+print('TIME:', time.time()- start_time )
 print('METRICS')
 print(model_history.history.keys())
 
@@ -534,13 +610,6 @@ with open(name_performance_metrics_file, mode='w') as results_file:
 
 os.mkdir(results_directory + 'predictions/')
 
-
-if analyze_validation_set is True:
-
-    os.mkdir(results_directory + 'predictions/val/')
-    evaluation_directory_val = project_folder + "val/original/"
-    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_val, results_directory, 'val')
-
 # ------------- evaluate and predict in the test dataset(s)-----------------
 
 list_of_test_sets = sorted(os.listdir(project_folder + 'test/'))
@@ -549,7 +618,9 @@ for folder in list_of_test_sets:
     names_csv_files = []
     os.mkdir(''.join([results_directory, 'predictions/', folder, '/']))
     evaluation_directory_01 = ''.join([project_folder, 'test/', folder, '/'])
-    name_test_csv_file = evaluate_and_predict(model, evaluation_directory_01, results_directory, folder)
+    name_test_csv_file = evaluate_and_predict(model, evaluation_directory_01,
+                                              results_directory, folder,
+                                              image_modality)
     names_csv_files.append(name_test_csv_file)
 
 """os.mkdir(results_directory + 'predictions/test_02/')
@@ -571,12 +642,22 @@ if len(valid_x) % 16 != 0:
 print('Evaluation Validation Dataset')
 model.evaluate(val_dataset, steps=valid_steps)"""
 
+if analyze_validation_set is True:
+
+    os.mkdir(results_directory + 'predictions/val/')
+    evaluation_directory_val = project_folder + "val/original_data/"
+    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_val,
+                                                results_directory, 'val',
+                                                image_modality)
 
 if evaluate_train_dir is True:
 
     os.mkdir(results_directory + 'predictions/train/')
-    evaluation_directory_train = project_folder + "train/label/"
-    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_train, results_directory, 'train')
+    evaluation_directory_val = project_folder + "train/original_data/"
+    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_val,
+                                                results_directory, 'train',
+                                                image_modality)
+
 
 plt.figure()
 plt.plot(model_history.history['dice_coef'], '-o')
