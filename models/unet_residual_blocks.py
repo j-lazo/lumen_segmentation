@@ -2,7 +2,7 @@ project_folder = '/home/nearlab/Jorge/current_work/' \
                  'lumen_segmentation/data/lumen_data/'
 
 # options: rgb, grayscale, hsv, lab, ycrcb
-image_modality = 'rgb'
+image_modality = 'hsv'
 
 augmented = True
 
@@ -11,8 +11,8 @@ if augmented is True:
 else:
     amount_data = '/original_data/'
 
-analyze_validation_set = False
-evaluate_train_dir = False
+analyze_validation_set = True
+evaluate_train_dir = True
 
 import sys
 sys.path.append(project_folder)
@@ -64,12 +64,11 @@ def load_data(path):
 def change_img_modality(img, img_modality='rgb'):
     shape = np.shape(img)
     if img_modality == 'grayscale':
-        zeros = np.zeros([np.shape(img)[0], np.shape(img)[1], 3])
+        out_img = np.zeros([shape[0], shape[1], shape[2]])
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        zeros[:, :, 0] = gray
-        zeros[:, :, 1] = gray
-        zeros[:, :, 2] = gray
-        out_img = copy.copy(zeros)
+        out_img[:, :, 0] = gray
+        out_img[:, :, 1] = gray
+        out_img[:, :, 2] = gray
 
     elif img_modality == 'hsv':
         out_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -409,7 +408,7 @@ def evaluate_and_predict(model, directory_to_evaluate,
         test_steps += 1
 
     for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
-        print(i, x)
+        #print(i, x)
         directory_image = x
         x = read_image_test(x, image_modality)
         #y_predicted = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
@@ -421,7 +420,7 @@ def evaluate_and_predict(model, directory_to_evaluate,
         output_name_image = name_original_file[:-4]
         results_name = ''.join([results_directory, output_directory,
                                 output_name_image, '.png'])
-        print(i, results_name)
+        #print(i, results_name)
         cv2.imwrite(results_name, y_predicted * 255.0)
 
     # save the results of the test dataset in a CSV file
@@ -507,7 +506,7 @@ print('Data validation: ', val_data_used)
 # ------------------- Hyperparameters -----------------------------------
 batch = 8
 lr = 1e-4
-epochs = 500
+epochs = 10
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch,
                            img_modality=image_modality)
