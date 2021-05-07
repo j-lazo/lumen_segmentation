@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
 import copy
-
+import shutil
 
 def convert_mask(dir_folder):
     masks_folder_dir = dir_folder
@@ -132,11 +132,11 @@ def resize(dir_folder, new_size):
         print(np.shape(resized))
         cv2.imwrite(''.join([dir_folder, 'image/', image]), resized)
 
-    for mask in masks_folder:
+    """for mask in masks_folder:
         img = cv2.imread(''.join([dir_folder, 'label/', mask]))
         resized = cv2.resize(img, (new_size, new_size), interpolation=cv2.INTER_AREA)
         print(np.shape(resized))
-        cv2.imwrite(''.join([dir_folder, 'label/', mask]), resized)
+        cv2.imwrite(''.join([dir_folder, 'label/', mask]), resized)"""
 
 
 def convert_grayscale(dir_folder):
@@ -145,16 +145,92 @@ def convert_grayscale(dir_folder):
     images_folder = os.listdir(images_folder_dir)
 
     for image in images_folder:
+        print(image)
         img = cv2.imread(''.join([dir_folder, '/', image]))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         cv2.imwrite(''.join([dir_folder, '/', image]), gray)
 
 
+def convert_hsv(dir_folder):
+
+    images_folder_dir = ''.join([dir_folder, '/'])
+    images_folder = os.listdir(images_folder_dir)
+
+    for image in images_folder:
+        print(image)
+        img = cv2.imread(''.join([dir_folder, '/', image]))
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        cv2.imwrite(''.join([dir_folder, '/', image]), hsv)
+
+
+def pair_exists(dir_folder):
+
+    images_folder_dir = ''.join([dir_folder, 'images/'])
+    images_list = os.listdir(images_folder_dir)
+
+    labels_folder_dir = ''.join([dir_folder, 'labels/'])
+    labels_list = os.listdir(labels_folder_dir)
+
+    destination_image_folder = ''.join([dir_folder, 'image/'])
+    destination_mask_folder = ''.join([dir_folder, 'label/'])
+
+    for image in images_list:
+        if image in labels_list:
+            img = cv2.imread(''.join([images_folder_dir, '/', image]))
+            mask = cv2.imread(''.join([labels_folder_dir, '/', image]))
+
+            if np.shape(img) == np.shape(mask):
+                shutil.copy(images_folder_dir + image, destination_image_folder + image)
+                shutil.copy(labels_folder_dir + image, destination_mask_folder + image)
+
+
+def convert_data_to_pickle_1ch(folder, output_folder):
+
+    img_list = sorted(os.listdir(folder))
+
+    for j, image in enumerate(img_list[:]):
+        print(j, image)
+        output_name = image[:-4]
+        frame = cv2.imread(os.path.join(folder, image), 1)
+        if np.shape(frame[:, :, 0]) == np.shape(frame[:, :, 1]) == np.shape(frame[:, :, 2]):
+            np.save(os.path.join(output_folder, output_name + '.npy'),
+                    frame[:, :, 0])
+            print(np.shape(frame[:, :, 0]))
+        else:
+            frame = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            np.save(os.path.join(output_folder, output_name + '.npy'),
+                    frame)
+            print(np.shape(frame))
+
+
+def convert_data_to_pickle_3ch(folder, output_folder):
+
+    img_list = sorted(os.listdir(folder))
+    for j, image in enumerate(img_list[:]):
+        print(j, image)
+        output_name = image[:-4]
+        frame = cv2.imread(os.path.join(folder, image), 1)
+        np.save(os.path.join(output_folder, output_name + '.npy'),
+                frame)
+
+
+def resize_image(dir_folder, new_size):
+    new_size = int(new_size)
+    images_folder = os.listdir(dir_folder)
+
+    for image in images_folder:
+        img = cv2.imread(''.join([dir_folder, image]))
+        resized = cv2.resize(img, (new_size, new_size), interpolation=cv2.INTER_AREA)
+        print(np.shape(resized))
+        cv2.imwrite(''.join([dir_folder, image]), resized)
+
+
 def main():
 
-    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/train/augmented_data/image/'
-    convert_grayscale(path_directory)
+    path_directory = '/home/nearlab/Jorge/DATASETS/' \
+                     'ureter_phantoms/phantom_001_pt2/'
 
+    resize_image(path_directory, 300)
 
 if __name__ == "__main__":
     main()

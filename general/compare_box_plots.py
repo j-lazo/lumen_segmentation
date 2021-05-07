@@ -398,9 +398,7 @@ def main():
                     #data_experiment_8]
 
     compare_boxplots(data, labels, 'Rec')
-    
-   
-    
+
 if __name__ == "__main__":
     main()
 

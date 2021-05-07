@@ -285,45 +285,42 @@ def read_img_results(dir_image):
 
 
 def main():
-    path_file_1 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+    """path_file_1 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
                   'lumen_data/results/' \
                   'compare_color_space/maskrcnn/' \
-                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_grayscale_.csv'
+                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_grayscale_.csv'"""
 
-    path_file_2 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/results/' \
-                  'compare_color_space/maskrcnn/' \
-                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_grayscale_data_augment_new.csv'
+    path_file_1 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/test_02/' \
+                  'results_evaluation__test_02_new.csv'
+
+    path_file_2 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/test_01/' \
+                  'results_evaluation__test_01_new.csv'
 
     path_file_3 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
-                  'data/lumen_data/' \
-                  'results/compare_color_space/maskrcnn/' \
-                  'results_evaluation_test_02_MaskRCNN_thershold_0.8_rgb_.csv'
+                  'data/polyps/results/test_03/' \
+                  'results_evaluation__test_03_new.csv'
 
     path_file_4 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
-                  'data/lumen_data/' \
-                  'results/compare_color_space/maskrcnn/' \
-                  'results_evaluation_test_02_MaskRCNN_threshold_0.8_grayscale_resimet101_new.csv'
+                  'data/polyps/results/test_04/' \
+                  'results_evaluation__test_04_new.csv'
 
-    path_file_5 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/results/' \
-                  'compare_color_space/' \
-                  'results_evaluation_test_02_ResUnet_lr_0.001_bs_8_hsv_10_12_2020_19_32_.csv'
+    path_file_5 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/test_05/' \
+                  'results_evaluation__test_05_new.csv'
 
-    path_file_6 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/results/' \
-                  'ensemble_all_data/' \
-                  'results_evaluation_test_02_ensemble_all_data_label_erode_5.csv'
+    path_file_6 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/ensemble_2/' \
+                  'results_evaluation__ensemble_2_new.csv'
 
-    path_file_7 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/results/' \
-                  'compare_3Dvs2D/' \
-                  'results_evaluation_ensemble_average_2.csv'
+    path_file_7 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/test_07/' \
+                  'results_evaluation__test_07_new.csv'
 
-    path_file_8 = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/results/' \
-                  'MaskRCNN_threshold_0.8_grayscale_resimet101/' \
-                  'results_evaluation_test_02_MaskRCNN_threshold_0.8_grayscale_resimet101_new.csv'
+    path_file_8 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                  'data/polyps/results/test_08/' \
+                  'results_evaluation__test_08_new.csv'
 
     # SAN network
     # path_file_7 = '/home/jlazo/Desktop/current_work/ICPR2020/data/enlarged_dataset/ensembles'

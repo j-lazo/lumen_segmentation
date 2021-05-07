@@ -42,24 +42,27 @@ def convert_cvs_data_to_imgs(directory_csv_file, directory_imgs, output_director
             for index in indexes:
                 list_points[index]
                 res = ast.literal_eval(list_points[index])
-                points_x = res.get('all_points_x')
-                points_y = res.get('all_points_y')
-                contour = []
-                for i, x in enumerate(points_x):
-                    contour.append([[x, points_y[i]]])
-                    array_contour = np.array(contour, dtype=np.int32)
+                if res!= {}:
+                    points_x = res.get('all_points_x')
+                    points_y = res.get('all_points_y')
+                    contour = []
+                    for i, x in enumerate(points_x):
+                        contour.append([[x, points_y[i]]])
+                        array_contour = np.array(contour, dtype=np.int32)
 
-                contours.append(array_contour)
-                image = cv2.imread(directory_imgs + img)
-                mask = generate_mask_from_points(image, contours)
-                cv2.imwrite(output_directory + '/' + img, mask)
+                    contours.append(array_contour)
+                    image = cv2.imread(directory_imgs + img)
+                    mask = generate_mask_from_points(image, contours)
+                    cv2.imwrite(output_directory + '/' + img, mask)
+
 
 def main():
 
-    path_csv = '/path_/to/file/file.csv'
-    path_imgs = '/path/to/images/'
-    path_output = '/path/to/output/mask/folder/'
+    path_csv = '/home/nearlab/Jorge/data/ureteroscopy/data_phantoms/phantom_001/phantom_001_pt_02.csv'
+    path_imgs = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/phantom_001_pt2/image/'
+    path_output = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/test/phantom_001_pt2/label/'
     convert_cvs_data_to_imgs(path_csv, path_imgs, path_output)
+
 
 if __name__ == "__main__":
     main()

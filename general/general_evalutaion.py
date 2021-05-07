@@ -226,7 +226,7 @@ def print_box_plots(name_test_csv_file, name_validation_csv_file, save_directory
     ax2.set_ylim(0, 1)
     ax3.set_ylim(0, 1)
 
-    plt.savefig(save_directory + 'results_test.svg')    
+    plt.savefig(save_directory + 'results_test.png')
     plt.close()
     
     fig2 = plt.figure(2)
@@ -242,30 +242,27 @@ def print_box_plots(name_test_csv_file, name_validation_csv_file, save_directory
     ax1.set_ylim(0, 1)
     ax2.set_ylim(0, 1)
     ax3.set_ylim(0, 1)
-    plt.savefig(save_directory + 'results_val.svg')
+    plt.savefig(save_directory + 'results_val.png')
     plt.close()
 
 
 def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directory):
     
-    path_images_folder = dir_groundtruth + 'image/grayscale/'
+    path_images_folder = dir_groundtruth + 'image/rgb/'
     path_masks_folder = dir_groundtruth + 'label/'
-    
     list_dice_values = read_results_csv_plot(dir_csv_file)
-    
+
     image_list = [f for f in listdir(path_images_folder) if isfile(join(path_images_folder, f))]
     mask_list = [f for f in listdir(path_masks_folder) if isfile(join(path_masks_folder, f))]
     predicted_masks = [f for f in listdir(dir_predictions) if isfile(join(dir_predictions, f))]
-    print(dir_predictions)
+
     for image in predicted_masks[:]:
 
-        result_image = [name for name in mask_list if (image[:] == name[:])][0]
-        if result_image is not None:
+        if image in mask_list:
 
                 path_image = ''.join([path_images_folder, image]) 
                 path_mask = ''.join([path_masks_folder, image]) 
                 path_predicted = ''.join([dir_predictions, image]) 
-        
                 image_frame = read_img_results(path_image)
                 mask_image = read_mask(path_mask)
                                 
@@ -312,8 +309,7 @@ def compare_results(dir_groundtruth, dir_predictions, dir_csv_file, save_directo
                         plt.title('Overlay')
                         plt.imshow(overlay)
                         plt.axis('off')
-                        
-                        plt.savefig(''.join([save_directory,  image, '_',str(counter),'_.png']))
+                        plt.savefig(''.join([save_directory,  image]))
                         plt.close()
 
 
@@ -332,25 +328,54 @@ def crop_images(image_directory, roi, string_to_add):
     
 
 def main():
+    base_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/'
+    folder_to_analyze = 'phantom_001_pt2'
+    general_model = 'ResUnet'
+    model_to_test = 'ResUnet_lr_1e-05_bs_16_rgb_27_04_2021_20_10'
 
-    test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/test/test_03/'
+    test_directory = ''.join([base_directory, 'test/',
+                              folder_to_analyze, '/'])
 
-    predictions_test_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results/' \
-                                 'ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/predictions/test_03/'
+    name_file_results_csv = ''.join([folder_to_analyze, '_',
+                                     model_to_test, '_.csv'])
 
-    name_test_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results/' \
-                         'ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/' \
-                         'results_evaluation_test_03_ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16_.csv'
+    predictions_test_directory = ''.join([base_directory,
+                                          'results/', general_model, '/',
+                                          model_to_test,
+                                          '/predictions/',
+                                          folder_to_analyze, '/'])
 
+    name_test_csv_file = ''.join([base_directory, 'results/', general_model, '/',
+                                  model_to_test, '/',
+                                  name_file_results_csv])
 
-    save_directory_test = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/old_lumen_data/results' \
-                         '/ResUnet_lr_0.001_bs_16_rgb_23_10_2020_17_16/' \
-                         'comparison_predictions/test_03/'
+    save_directory_test = ''.join([base_directory,
+                                          'results/', general_model, '/',
+                                          model_to_test, '/',
+                                          '/comparison_predictions/',
+                                          folder_to_analyze])
 
-    compare_results(test_directory, predictions_test_directory, name_test_csv_file, save_directory_test)
+    save_directory = ''.join([base_directory,
+                                          'results/', general_model, '/',
+                                          model_to_test, '/'])
+
+    name_validation_csv_file = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
+                               'data/lumen_data/results/ResUnet/' \
+                               'ResUnet_lr_1e-05_bs_16_rgb_27_04_2021_20_10/' \
+                               'phantom_001_pt1_ResUnet_lr_1e-05_bs_16_rgb_27_04_2021_20_10_.csv'
+
+    print_box_plots(name_test_csv_file,
+                    name_validation_csv_file,
+                    save_directory)
+
+    compare_results(test_directory,
+                    predictions_test_directory,
+                    name_test_csv_file,
+                    save_directory_test)
 
     roi = [76, 160, 580, 300]
-    crop_images(save_directory_test, roi, 'test_')
+
+    crop_images(save_directory_test, roi, 'test')
 
 
 if __name__ == "__main__":

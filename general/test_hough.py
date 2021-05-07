@@ -13,7 +13,7 @@ import copy
 
 
 def detect_circle(image_name):
-
+    calculate_elipse_hough
     img = cv2.imread(image_name, 0)
     img = cv2.medianBlur(img, 5)
     cimg = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)

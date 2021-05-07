@@ -82,10 +82,12 @@ def augment_data(files_path):
     masks = os.listdir(files_path + 'label/')
     
     for i, element in enumerate(files[:]):
+        if element not in masks:
+            print(element, 'has no pair')
         print(1.0*i/len(files), element)
         img = cv2.imread("".join([files_path, 'image/', element]))
         mask = cv2.imread("".join([files_path, 'label/', element]))
-    
+
         rows, cols, channels = img.shape
         # define the rotation matrixes
         rot1 = cv2.getRotationMatrix2D((cols/2, rows/2), 90, 1)
@@ -152,7 +154,8 @@ def augment_data(files_path):
 
 def main():
     
-    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/lumen_data/val/augmented_data/'
+    path_directory = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                     'lumen_data/test/phantom_001_pt2/augmented_data/'
     augment_data(path_directory)
 
 

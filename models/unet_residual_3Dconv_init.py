@@ -163,6 +163,7 @@ def build_model():
     x = tf.keras.layers.Conv3D(num_3d_filters, kernel_size=(3, 3, 3), activation='relu',
                                strides=(1, 1, 1),
                                padding='valid')(x)
+    x = BatchNormalization()(x)
     print('output shape 3D')
     print(str(x.shape.as_list()))
     paddings = tf.constant([[0, 0], [0, 0], [1, 1], [1, 1], [0, 0]])
@@ -439,7 +440,6 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
 
     return name_test_csv_file
 
-
 # ------------------- Define training and validation data -----------------------------------
 path = project_folder
 train_data_used = ''.join([project_folder, 'train', amount_data])
@@ -453,7 +453,7 @@ print('Data validation: ', val_data_used)
 
 # ------------------- Hyperparameters -----------------------------------
 batch = 8
-lr = 1e-4
+lr = 1e-5
 epochs = 500
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)

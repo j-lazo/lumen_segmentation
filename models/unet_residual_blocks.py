@@ -11,8 +11,8 @@ if augmented is True:
 else:
     amount_data = '/original_data/'
 
-analyze_validation_set = True
-evaluate_train_dir = True
+analyze_validation_set = False
+evaluate_train_dir = False
 
 import sys
 sys.path.append(project_folder)
@@ -51,7 +51,7 @@ from sklearn.metrics import accuracy_score
 
 def load_data(path):
     print(path)
-    path_images = ''.join([path, 'image/npy/*'])
+    path_images = ''.join([path, 'image/rgb/*'])
     path_labels = ''.join([path, "label/*"])
 
     images = sorted(glob(path_images))
@@ -133,11 +133,12 @@ def read_image_test(path_img, img_modality='rgb'):
     x = x / 255.0
     return x
 
+
 def read_image(path_img, img_modality='rgb'):
     target_size_x = 256
     targe_size_y = 256
-
     path_img = path_img.decode()
+
     if path_img[-4:] == '.npy':
         x = np.load(path_img)
         x = cv2.resize(x, (target_size_x, targe_size_y))
@@ -180,7 +181,7 @@ def tf_parse(x, y, img_modality):
     return x, y
 
 
-def tf_dataset(x, y, batch=2, img_modality='rgb'):
+def tf_dataset(x, y, batch=8, img_modality='rgb'):
     dataset = tf.data.Dataset.from_tensor_slices((x, y))
     #dataset = dataset.map(tf_parse)
     dataset = dataset.map(lambda p, w: tf_parse(p, w,
@@ -210,7 +211,7 @@ def iou(y_true, y_pred, smooth = 1e-15):
     return tf.numpy_function(f, [y_true, y_pred], tf.float32)"""
 
 
-def dice_coef(y_true, y_pred, smooth=1):
+def dice_coef(y_true, y_pred, smooth=0.0001):
     intersection = K.sum(y_true * y_pred, axis=[1,2,3])
     union = K.sum(y_true, axis=[1,2,3]) + K.sum(y_pred, axis=[1,2,3])
     return K.mean((2. * intersection + smooth) / (union + smooth), axis=0)
@@ -227,8 +228,8 @@ def conv_block(x, num_filters):
     x = Activation("relu")(x)
 
     skip = Conv2D(num_filters, (3, 3), padding="same")(x)
-    skip = Activation("relu")(skip)
     skip = BatchNormalization()(skip)
+    skip = Activation("relu")(skip)
 
     x = Conv2D(num_filters, (3, 3), padding="same")(x)
     x = BatchNormalization()(x)
@@ -416,7 +417,7 @@ def evaluate_and_predict(model, directory_to_evaluate,
         y_predicted = y_predicted[0]
         y_predicted[:, :, :][y_predicted[:, :, :] > 0.5] = 1
         y_predicted[:, :, :][y_predicted[:, :, :] <= 0.5] = 0
-        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/npy/']), '')
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/rgb/']), '')
         output_name_image = name_original_file[:-4]
         results_name = ''.join([results_directory, output_directory,
                                 output_name_image, '.png'])
@@ -441,7 +442,7 @@ def evaluate_and_predict(model, directory_to_evaluate,
     # save the results of the test dataset in a CSV file
     # ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
 
-    ground_truth_labels_dir = directory_to_evaluate + 'label_image/'
+    ground_truth_labels_dir = directory_to_evaluate + 'label/'
     ground_truth_label_list = [file for file in listdir(ground_truth_labels_dir)
                                if isfile(join(ground_truth_labels_dir, file))]
     results_label_list = [file for file in listdir(result_mask_dir)
@@ -506,7 +507,7 @@ print('Data validation: ', val_data_used)
 # ------------------- Hyperparameters -----------------------------------
 batch = 8
 lr = 1e-4
-epochs = 10
+epochs = 7
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch,
                            img_modality=image_modality)
@@ -566,17 +567,24 @@ if len(valid_x) % batch != 0:
     valid_steps += 1
 
 start_time = time.time()
+#model_history = model.fit(train_dataset,
+#    validation_data=valid_dataset,
+#    epochs=epochs,
+#    steps_per_epoch=train_steps,
+#    validation_steps=valid_steps,
+#    callbacks=callbacks)
+    #class_weight=class_weight)
 model_history = model.fit(train_dataset,
     validation_data=valid_dataset,
     epochs=epochs,
     steps_per_epoch=train_steps,
     validation_steps=valid_steps,
     callbacks=callbacks)
-    #class_weight=class_weight)
+
 
 model.save(results_directory + new_results_id + '_model')
 
-print('TIME:', time.time()- start_time )
+print('TIME:', time.time() - start_time)
 print('METRICS')
 print(model_history.history.keys())
 
@@ -585,7 +593,10 @@ name_performance_metrics_file = ''.join([results_directory,
                                          new_results_id,
                                          '_.csv'])
 
-name_performance_metrics_file = ''.join([results_directory, 'performance_metrics_', training_time.strftime("%d_%m_%Y_%H_%M"), '_.csv'])
+name_performance_metrics_file = ''.join([results_directory,
+                                         'performance_metrics_',
+                                         training_time.strftime("%d_%m_%Y_%H_%M"),
+                                         '_.csv'])
 
 with open(name_performance_metrics_file, mode='w') as results_file:
     results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)

@@ -1,9 +1,6 @@
-project_folder = '/home/nearlab/Jorge/current_work/' \
-                 'lumen_segmentation/data/3x3_rgb_dataset/'
-
 image_modality = 'rgb'
 
-augmented = False
+augmented = True
 
 if augmented is True:
     amount_data = '/augmented_data/'
@@ -13,12 +10,8 @@ else:
 analyze_validation_set = False
 evaluate_train_dir = False
 
-import sys
-
-sys.path.append(project_folder)
-
-import numpy as np
 import time
+import numpy as np
 import cv2
 from glob import glob
 from sklearn.model_selection import train_test_split
@@ -27,16 +20,13 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from tqdm import tqdm
 import tensorflow as tf
 import keras.backend as K
-import keras
 from tensorflow.keras.backend import sum as suma
 from tensorflow.keras.backend import mean
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import Model
 from keras.utils import CustomObjectScope
 
-import os.path
-from os import path
-from PIL import Image
+import copy
 from os import listdir
 from os.path import isfile, join
 from datetime import datetime
@@ -60,7 +50,6 @@ def load_data(path):
     print('total size labels:', total_size_labels, path_labels)
     return (images, masks)
 
-
 def load_data_only_imgs(path):
     print(path)
     path_images = ''.join([path, "/*"])
@@ -70,13 +59,26 @@ def load_data_only_imgs(path):
     return (images, images)
 
 
-def read_image(path):
-    path = path.decode()
-    x = np.load(path)
-    # x = np.transpose()
-    x = np.resize(x, (3, 256, 256, 3))
+def read_image_test(path):
+    x = cv2.imread(path, cv2.IMREAD_COLOR)
+    x = cv2.resize(x, (256, 256))
     x = x / 255.0
+    return x
 
+
+def read_mask_test(path):
+    x = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    x = cv2.resize(x, (256, 256))
+    x = np.expand_dims(x, axis=-1)
+    return x
+
+
+def read_image(path):
+
+    path = path.decode()
+    x = cv2.imread(path, 1)
+    x = cv2.resize(x, (256, 256))
+    x = x/255.0
     return x
 
 
@@ -85,7 +87,7 @@ def read_mask(path):
     x = cv2.imread(path)
     x = cv2.cvtColor(x, cv2.COLOR_BGR2GRAY)
     x = cv2.resize(x, (256, 256))
-    x = x / 255.0
+    x = x/255.0
     x = np.expand_dims(x, axis=-1)
     return x
 
@@ -97,7 +99,7 @@ def tf_parse(x, y):
         return x, y
 
     x, y = tf.numpy_function(_parse, [x, y], [tf.float64, tf.float64])
-    x.set_shape([3, 256, 256, 3])
+    x.set_shape([256, 256, 3])
     y.set_shape([256, 256, 1])
     return x, y
 
@@ -168,23 +170,6 @@ def build_model():
     inputs = Input((3, size, size, 3))
     skip_x = []
     x = inputs
-    num_3d_filters = 16
-    x = tf.keras.layers.Conv3D(num_3d_filters, kernel_size=(3, 3, 3), activation='relu',
-                               strides=(1, 1, 1),
-                               padding='valid')(x)
-    x = BatchNormalization()(x)
-    print('output shape 3D')
-    print(str(x.shape.as_list()))
-    paddings = tf.constant([[0, 0], [0, 0], [1, 1], [1, 1], [0, 0]])
-    # x = keras.layers.ZeroPadding3D(padding=2)
-    x = tf.pad(x, paddings, "CONSTANT")
-    print(str(x.shape.as_list()))
-    x = tf.reshape(x, [-1, 256, 256, num_3d_filters])
-    print(str(x.shape.as_list()))
-    # y = tf.reshape(y, [5, 254, 254, 12])
-    # x = tf.reshape(-1, tf.shape(x)[1] * tf.shape(x)[2])
-    # x = tf.reshape(x)[0]
-    ## Encoder
     for f in num_filters:
         x = conv_block(x, f)
         print(str(x.shape.as_list()))
@@ -218,11 +203,9 @@ def mask_parse(mask):
 
 
 def read_image_test(path):
-
-    x = np.load(path)
-    x = np.resize(x, (3, 256, 256, 3))
+    x = cv2.imread(path, cv2.IMREAD_COLOR)
+    x = cv2.resize(x, (256, 256))
     x = x / 255.0
-
     return x
 
 
@@ -338,10 +321,6 @@ def read_img(dir_image):
     return img
 
 
-def make_predictions():
-    return 0
-
-
 def read_results_csv(file_path, row_id=0):
     dice_values = []
     with open(file_path, 'r') as file:
@@ -353,32 +332,34 @@ def read_results_csv(file_path, row_id=0):
 
 
 def evaluate_and_predict(model, directory_to_evaluate, results_directory, output_name):
+
     output_directory = 'predictions/' + output_name + '/'
     batch_size = 8
     (test_x, test_y) = load_data(directory_to_evaluate)
     test_dataset = tf_dataset(test_x, test_y, batch=batch_size)
-    test_steps = (len(test_x) // batch_size)
+    test_steps = (len(test_x)//batch_size)
 
     if len(test_x) % batch_size != 0:
         test_steps += 1
 
     # evaluate the model in the test dataset
     model.evaluate(test_dataset, steps=test_steps)
-    test_steps = (len(test_x) // batch_size)
+    test_steps = (len(test_x)//batch_size)
     if len(test_x) % batch_size != 0:
         test_steps += 1
-
+    times = []
     for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
-        print(i, x)
+        #print(i, x)
         directory_image = x
-        print(x)
         x = read_image_test(x)
         #y = read_mask_test(y)
+        init_time = time.time()
         y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']),
-                                                     '')
+        delta = time.time() - init_time
+        times.append(delta)
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
         results_name = ''.join([results_directory, output_directory, name_original_file])
-        cv2.imwrite(results_name[:-4] + '.png', y_pred * 255.0)
+        cv2.imwrite(results_name, y_pred * 255.0)
 
     # save the results of the test dataset in a CSV file
     ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
@@ -447,71 +428,249 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
     model.evaluate(test_dataset, steps=test_steps)
     test_steps = (len(test_x) // batch_size)
 
+    print(times)
+    print(np.average(times), np.std(times))
     return name_test_csv_file
 
 
-def predict(model, directory_to_evaluate, output_directory):
-    times = []
-    (test_x, test_y) = load_data_only_imgs(directory_to_evaluate)
+def predict_mask(model, input_image):
 
-    for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
-        # print(i, x)
-        directory_image = x
-        x = read_image_test(x)
+    y_pred = model.predict(np.expand_dims(input_image, axis=0))[0] >= 0.5
+
+    return y_pred
+
+
+def paint_imgs(img, mask):
+
+    if np.shape(img) != np.shape(mask):
+        img = cv2.resize(img, (np.shape(mask)[0], np.shape(mask)[1]))
+
+    for i in range(np.shape(mask)[0]):
+        for j in range(np.shape(mask)[1]):
+            if mask[i, j, 0] == True:
+                img[i, j, 1] = 100
+
+    return img
+
+
+def build_contours(array_of_points):
+
+    contours = []
+    for i, y_points in enumerate(array_of_points[0]):
+        point = (array_of_points[1][i], y_points)
+        point = np.asarray(point)
+        contours.append([point])
+
+    return contours
+
+
+def calc_histograms_and_center(mask, image):
+
+    if not (np.all(mask == 0)):
+
+        percentage = 0.6
+        #grayscale = cv2.cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        grayscale = image[:, :, 2]
+        grayscale = np.multiply(grayscale, mask)
+
+        #list_values_grayscale = [value for row in grayscale for value in row if value != 0]
+        # create the histogram plot, with three lines, one for
+        # each color
+        max_grays = ((np.where(grayscale >= int(percentage * np.amax(grayscale)))))
+        gray_contours = np.asarray([build_contours(max_grays)])
+        gray_convex_hull, gray_x, gray_y = determine_convex_hull(gray_contours)
+
+        points_x = []
+        points_y = []
+        for hull in gray_convex_hull:
+            for i, point in enumerate(hull):
+                points_x.append(point[0][0])
+                points_y.append(point[0][1])
+
+    else:
+        gray_x = 'nAN'
+        gray_y = 'nAN'
+
+    return gray_x, gray_y
+
+
+def detect_dark_region(mask, image):
+    w_image, h_image, d_image = np.shape(image)
+    w_mask, h_mask, d_mask = np.shape(mask)
+    temp_mask = np.zeros((w_mask, h_mask, 3), dtype="float32")
+    temp_mask[:, :, 0] = mask[:, :, 0]
+    temp_mask[:, :, 1] = mask[:, :, 0]
+    temp_mask[:, :, 2] = mask[:, :, 0]
+
+    if w_image != w_mask or h_image != h_mask:
+       mask = cv2.resize(temp_mask, (w_image, h_image))
+
+    gt_mask = np.zeros((w_image, h_image))
+
+    if np.any(mask):
+
+        #temp_mask = cv2.cv2.cvtColor(temp_mask*1, cv2.COLOR_BGR2GRAY)
+        cl_mask = clean_mask(mask*1)
+        gt_mask[cl_mask == 1.0] = 1
+
+    point_x, point_y = calc_histograms_and_center(gt_mask, image)
+
+    return point_x, point_y
+
+
+def clean_mask(mask):
+
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    u8 = mask.astype(np.uint8)
+    # remove the small areas appearing in the image if there is a considerable big one
+    areas = []
+    remove_small_areas = False
+    contours, hierarchy = cv2.findContours(u8,
+                                           cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    for contour in contours:
+        areas.append(cv2.contourArea(contour))
+
+    if len(contours) > 1:
+        # sort the areas from bigger to smaller
+        sorted_areas = sorted(areas, reverse=True)
+        index_remove = np.ones(len(areas))
+        for i in range(len(sorted_areas)-1):
+            # if an area is 1/4 smaller than the bigger area, mark to remove
+            if sorted_areas[i+1] < 0.15 * sorted_areas[0]:
+                index_remove[areas.index(sorted_areas[i+1])] = 0
+                remove_small_areas = True
+
+    if remove_small_areas is True:
+        #new_mask = np.zeros((w, d))
+        new_mask = copy.copy(mask)
+        for index, remove in enumerate(index_remove):
+            if remove == 0:
+                # replace the small areas with 0
+                cv2.drawContours(new_mask, contours, index, (0, 0, 0), -1)  # as opencv stores in BGR format
+    else:
+        new_mask = mask
+
+    return new_mask
+
+def determine_convex_hull(contours):
+
+    point_sets = np.asarray(contours[0])
+    #contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # create hull array for convex hull points
+    new_hulls = []
+    new_contours = []
+    # calculate points for each contour
+    if len(point_sets) > 1:
+        temp_contours = point_sets[0]
+        for i in range(1, len(point_sets)):
+            temp_contours = np.concatenate((temp_contours, point_sets[i]), axis=0)
+
+        new_contours.append(temp_contours)
+    else:
+        new_contours = point_sets
+
+    for i in range(len(new_contours)):
+        new_hulls.append(cv2.convexHull(new_contours[i], False))
+
+    if new_hulls == []:
+        point_x = 'old'
+        point_y = 'old'
+    else:
+        M = cv2.moments(new_hulls[0])
+        if M["m00"] < 0.001:
+            M["m00"] = 0.001
+
+        point_x = int(M["m10"] / M["m00"])
+        point_y = int(M["m01"] / M["m00"])
+
+    return new_hulls, point_x, point_y
+
+def main():
+    cap = cv2.VideoCapture(0)
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
+
+    # --------------Make predictions -------------
+    lr = lr = 1e-3
+    opt = tf.keras.optimizers.Adam(lr)
+    metrics = ["acc", tf.keras.metrics.Recall(),
+               tf.keras.metrics.Precision(),
+               dice_coef,
+               iou]
+
+    project_folder = '/home/nearlab/Jorge/current_work/' \
+                     'lumen_segmentation/data/lumen_data/'
+    #folder_name = 'ResUnet_lr_0.0001_bs_8_lab_12_12_2020_16_43' # good
+    folder_name = 'ResUnet_lr_0.001_bs_8_hsv_13_12_2020_13_26' # even better
+    #folder_name = 'ResUnet_lr_1e-05_bs_8_rgb_13_04_2021_19_59'
+    #folder_name = 'ResUnet_lr_1e-05_bs_16_rgb_27_04_2021_20_10'
+    #folder_name = 'ResUnet_lr_0.0001_bs_8_hsv_28_04_2021_19_34'
+
+    new_results_id = folder_name
+    results_directory = ''.join([project_folder, 'results/ResUnet/',
+                                 new_results_id, '/'])
+    name_model = ''.join([results_directory, new_results_id, '_model.h5'])
+    print('NAME MODEL')
+    print(name_model)
+    model = tf.keras.models.load_model(name_model,
+                                       custom_objects={'loss': dice_coef_loss},
+                                       compile=False)
+
+    model.compile(optimizer=opt, loss=dice_coef_loss, metrics=metrics)
+    #model.summary()
+    frame_rate = 15
+    point_x, point_y = 0, 0
+    points_x = []
+    points_y = []
+    while (cap.isOpened()):
+        prev = 0
+        ret, frame = cap.read()
+
+
         init_time = time.time()
-        y_pred = model.predict(np.expand_dims(x, axis=0))[0] >= 0.5
-        delta = time.time() - init_time
-        times.append(delta)
-        name_original_file = directory_image.replace(directory_to_evaluate, '')
-        print(name_original_file[:-4:])
-        results_name = ''.join([output_directory, name_original_file[:-4], '.png'])
-        cv2.imwrite(results_name, y_pred * 255.0)
+        time_elapsed = time.time() - prev
+        if ret == True:
+            #frame = cv2.flip(frame, 0)
+            #out.write(frame)
+            if time_elapsed > 1. / frame_rate:
+                resized = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
+                resized = cv2.blur(resized, (7, 7))
+                #img_rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                mask = predict_mask(model, resized)
+                #painted_frame = paint_imgs(resized, mask)
+                resized_2 = cv2.resize(resized, (300, 300), interpolation=cv2.INTER_AREA)
+                w, h, d = np.shape(resized_2)
+                previous_point_x = point_x
+                previous_point_y = point_y
+                point_x, point_y = detect_dark_region(mask, resized_2)
+                if point_x != 'nAN':
+                    cv2.circle(resized_2, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
+                if point_y != 'nAN':
+                    cv2.circle(resized_2, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
 
-    print(np.average(times), np.mean(times), np.median(times))
+                if point_x == 'nAN':
+                   point_x = previous_point_x
+                if point_y == 'nAN':
+                   point_y = previous_point_y
 
-# --------------Make predictions -------------
+                cv2.line(resized_2, (int(point_x), int(point_y)), (int(w/2), int(h/2)), (255, 0, 0), 4)
+                cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 0, 255), -1)
+                cv2.imshow('frame', resized_2)
+                print(point_x, point_y, 1/(time.time()-init_time))
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        else:
+            break
 
-project_folder = '/home/nearlab/Jorge/current_work/' \
-                 'lumen_segmentation/data/3x3_rgb_dataset/'
+    # Release everything if job is finished
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
 
-folder_name = 'ResUnet_lr_1e-05_bs_8_rgb_18_01_2021_18_41'
-
-lr = lr = 1e-5
-opt = tf.keras.optimizers.Adam(lr)
-metrics = ["acc", tf.keras.metrics.Recall(),
-           tf.keras.metrics.Precision(),
-           dice_coef,
-           iou]
-
-new_results_id = folder_name
-results_directory = ''.join([project_folder, 'results/',
-                             new_results_id, '/'])
-name_model = ''.join([results_directory, new_results_id, '_model.h5'])
-print('NAME MODEL')
-print(name_model)
-model = tf.keras.models.load_model(name_model,
-                                   custom_objects={'loss': dice_coef_loss},
-                                   compile=False)
+if __name__ == "__main__":
+    main()
 
 
-model.compile(optimizer=opt, loss=dice_coef_loss, metrics=metrics)
-model.summary()
-# ------------- evaluate and predict in the validation dataset-----------------
-if not os.path.isdir(results_directory + 'predictions/'):
-    os.mkdir(results_directory + 'predictions/')
 
-
-if analyze_validation_set is True:
-
-    os.mkdir(results_directory + 'predictions/val/')
-    evaluation_directory_val = project_folder + "val/original/"
-    name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_val, results_directory, 'val')
-
-# ------------- evaluate and predict in the test dataset(s)-----------------
-
-evaluation_directory_00 = '/home/nearlab/Jorge/current_work/lumen_segmentation/' \
-                          'data/lumen_data/video_test/volume_frames/'
-output_dir = '/home/nearlab/Jorge/current_work/' \
-             'lumen_segmentation/data/lumen_data/' \
-             'video_test/result_masks/3DUNet/'
-predict(model, evaluation_directory_00, output_dir)

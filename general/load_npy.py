@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from os import listdir
 
 
-def load_test_data(X_test_path, Y_test_path):
+def load_npy_data(X_test_path, Y_test_path):
     print('-' * 30)
     print('load test images...')
     print('-' * 30)
@@ -19,8 +19,9 @@ def load_test_data(X_test_path, Y_test_path):
     volume_size = 3
     imgs_test = np.empty([0, volume_size, img_size, img_size, 3], dtype=np.float32)
     mask_test = np.empty([0, volume_size, img_size, img_size, 3], dtype=np.float32)
-    for t in tqdm(test_dir[:6]):
+    for t in tqdm(test_dir[:]):
         X_vol = np.load(os.path.join(X_test_path, t), allow_pickle=True)
+        print(np.shape(X_vol))
         #X_vol = np.moveaxis(X_vol, -2, 0)
         #print(np.shape(X_vol))
         #imgs_test = np.append(imgs_test, [X_vol / 255], axis=0)
@@ -42,14 +43,14 @@ def load_test_data(X_test_path, Y_test_path):
 
 def main():
 
-    path_images = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'quick_test/p_007_pt4/new_folder/train/image/'
-    path_labels = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'quick_test/p_007_pt4/new_folder/train/label/'
+    path = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+           '3D_volume_data/train/'
+    path_images = path + 'image/'
+    path_labels = path + 'label/'
 
-    images, labels = load_test_data(path_images, path_labels)
+    images, labels = load_npy_data(path_images, path_labels)
     print(np.shape(images), np.shape(labels))
-    index = 5
+    index = 25
 
     image_tes_1 = images[index][0]
     mask_test_1 = labels[index][0]

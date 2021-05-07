@@ -41,7 +41,7 @@ def gather_all_data(source_folder, destination_folder, exceptions):
 
             for counter, image in enumerate(images_list[:]):
                 shutil.copy(files_path_images + image, destination_image_folder + image)
-                shutil.copy(files_path_labels + image, destination_label_folder + image)
+                shutil.copy(files_path_labels + image[:-4] + '.png', destination_label_folder + image[:-4] + '.png')
 
         else:
             for sub_folder in labels_subfolder:
@@ -80,12 +80,14 @@ def copy_images_and_label(source_folder, destination_folder, folder=''):
 
     return 0
 
+
 def main():
 
-    source_folders = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/all_data/patient_cases/'
-    destination_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3D_volume_data/all_data/all/'
+    source_folders = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3x3_rgb_dataset/all/patients_cases/'
+    destination_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/3x3_rgb_dataset/all/all/'
     exceptions = ['all']
     gather_all_data(source_folders, destination_folder, exceptions)
+
 
 if __name__ == '__main__':
     main()

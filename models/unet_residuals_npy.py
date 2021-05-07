@@ -3,14 +3,14 @@ project_folder = '/home/nearlab/Jorge/current_work/' \
                  'data/3x3_grayscale_dataset/'
 
 image_modality = 'grayscale'
-augmented = True
+augmented = False
 
-if augmented is False:
+if augmented is True:
     amount_data = '/augmented_data/'
 else:
     amount_data = '/original_data/'
 
-analyze_validation_set = True
+analyze_validation_set = False
 evaluate_train_dir = False
 
 import sys
@@ -154,12 +154,14 @@ def conv_block(x, num_filters):
 
 def build_model():
     size = 256
-    num_filters = [16, 32, 48, 64]
+    #num_filters = [16, 32, 48, 64]
     # num_filters = [64, 128, 256, 512]
+    num_filters = [64, 48, 32, 16]
     inputs = Input((size, size, 3))  ## <-- change this ok?!!
 
     skip_x = []
     x = inputs
+    #x = Conv3D(3, kernel_size=(1, 3, 3), strides=(1, 1, 1), padding='valid')(x)
     ## Encoder
     for f in num_filters:
         x = conv_block(x, f)
@@ -299,9 +301,17 @@ def dice(im1, im2, smooth=1):
 
 
 def read_img(dir_image):
-    original_img = cv2.imread(dir_image)
-    #height, width, depth = original_img.shape
+    original_img = np.load(dir_image, allow_pickle=True)
     img = np.resize(original_img, (3, 256, 256))
+    img = img / 255
+    img = (img > 0.9) * 1.0
+    return img
+
+def read_img_png(dir_image):
+    original_img = cv2.imread(dir_image)
+    img = cv2.resize(original_img, (256, 256))
+    img = img / 255
+    img = (img > 0.9) * 1.0
     return img
 
 
@@ -336,22 +346,18 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
         test_steps += 1
 
     for i, (x, y) in tqdm(enumerate(zip(test_x, test_y)), total=len(test_x)):
-        print(i, x)
         directory_image = x
         x = read_image_test(x)
         #y = read_mask_test(y)
         y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
-        print(directory_to_evaluate + image_modality + '/')
         name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']),
                                                      '')
-        print(name_original_file)
         results_name = ''.join([results_directory, output_directory, name_original_file])
-        print(results_name)
-        print(np.shape(y_pred))
         cv2.imwrite(results_name[:-4] + '.png', y_pred * 255.0)
 
     # save the results of the test dataset in a CSV file
     ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
+    ground_truth_labels_dir = directory_to_evaluate + 'label/'
     result_mask_dir = results_directory + output_directory
 
     ground_truth_image_list = [file for file in listdir(ground_truth_imgs_dir) if
@@ -365,10 +371,11 @@ def evaluate_and_predict(model, directory_to_evaluate, results_directory, output
 
         result_image = [name for name in results_image_list if image[:-4] == name[:-4]][0]
         if result_image is not None:
-            print(''.join([ground_truth_imgs_dir, image]))
-            print(''.join([ground_truth_imgs_dir, image]))
-            original_mask = read_img(''.join([ground_truth_imgs_dir, image]))
-            predicted_mask = read_img(''.join([result_mask_dir, result_image]))
+            print(result_image)
+            print(ground_truth_labels_dir, image)
+            original_mask = read_img(''.join([ground_truth_labels_dir, image]))
+            predicted_mask = read_img_png(''.join([result_mask_dir, result_image]))
+            print('HASTA AQUI LLEGAMOS')
             dice_val = dice(original_mask, predicted_mask)
             results_dice.append(dice_val)
             sensitivity, specificity = calculae_rates(original_mask, predicted_mask)
@@ -406,8 +413,8 @@ print('Data validation: ', val_data_used)
 
 # ------------------- Hyperparameters -----------------------------------
 batch = 16
-lr = 1e-3
-epochs = 500
+lr = 1e-4
+epochs = 950
 
 train_dataset = tf_dataset(train_x, train_y, batch=batch)
 valid_dataset = tf_dataset(valid_x, valid_y, batch=batch)
@@ -520,18 +527,11 @@ if analyze_validation_set is True:
 
 # ------------- evaluate and predict in the test dataset(s)-----------------
 
-os.mkdir(results_directory + 'predictions/test_01/')
-evaluation_directory_01 = project_folder + "test/test_01/"
-name_test_csv_file_1 = evaluate_and_predict(model, evaluation_directory_01, results_directory, 'test_01')
 
-"""os.mkdir(results_directory + 'predictions/test_02/')
+os.mkdir(results_directory + 'predictions/test_02/')
 evaluation_directory_02 = project_folder + "test/test_02/"
 name_test_csv_file_2 = evaluate_and_predict(model, evaluation_directory_02, results_directory, 'test_02')
 
-os.mkdir(results_directory + 'predictions/test_03/')
-evaluation_directory_03 = project_folder + "test/test_03/"
-name_test_csv_file_3 = evaluate_and_predict(model, evaluation_directory_03, results_directory, 'test_03')
-"""
 
 # evaluate in the validation dataset
 """(valid_x, valid_y) = load_data(project_folder + "val/")

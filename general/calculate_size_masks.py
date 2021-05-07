@@ -32,15 +32,14 @@ def calculate_size_maks(dir_folder):
             del(list_y_pixels[:])
             #print(np.amax(mask[:,:,0]), np.amax(mask[:,:,1]), np.amax(mask[:,:,2]))
             #print(np.amin(mask[:,:,0]), np.amin(mask[:,:,1]), np.amin(mask[:,:,2]))    
-            i,j = np.where(mask[:,:,2]==255)
+            i, j = np.where(mask[:, :, 2] == 255)
             
             list_x_pixels.append(i) 
             list_y_pixels.append(j)
             
             size_x.append(np.amax(list_x_pixels)-np.amin(list_x_pixels))  
             size_y.append(np.amax(list_y_pixels)-np.amin(list_y_pixels))  
-           
-                            
+
     return size_x, size_y
              
         
@@ -50,11 +49,11 @@ def main():
    
     size_x, size_y = calculate_size_maks(directory)  
     plt.figure()
-    plt.plot(size_x,size_y, 'ro')
+    plt.plot(size_x, size_y, 'ro')
     
     directory = '/home/nearlab/Jorge/DATASETS/lumen_ureteroscopy/p_001_pt2/label/'
     size_x, size_y = calculate_size_maks(directory)  
-    plt.plot(size_x,size_y, 'ro', label='patient 1')
+    plt.plot(size_x, size_y, 'ro', label='patient 1')
 
     directory = '/home/nearlab/Jorge/DATASETS/lumen_ureteroscopy/p_006_pt1/label/'
     size_x, size_y = calculate_size_maks(directory)
