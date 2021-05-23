@@ -12,16 +12,18 @@ import copy
 import os
 import csv
 import matplotlib.pyplot as plt
-
+from Unet_based import ResUnet
+from Unet_based import Transpose_Unet
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
 import datetime
+import Unet_based as un
 
 
 def load_data(path, image_modality):
     print(path)
-    path_images = ''.join([path, 'image/', image_modality, "/*"])
+    path_images = ''.join([path, 'image/*'])
     path_labels = ''.join([path, "label/*"])
     images = sorted(glob(path_images))
     masks = sorted(glob(path_labels))
@@ -115,55 +117,21 @@ def dice_coef_loss(y_true, y_pred):
     return 1 - dice_coef(y_true, y_pred)
 
 
-def conv_block(x, num_filters):
-    x = Conv2D(num_filters, (3, 3), padding="same")(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
+def build_model(model_name):
 
-    skip = Conv2D(num_filters, (3, 3), padding="same")(x)
-    skip = Activation("relu")(skip)
-    skip = BatchNormalization()(skip)
-
-    x = Conv2D(num_filters, (3, 3), padding="same")(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-
-    x = tf.math.add_n([x, skip])
-    x = Activation("relu")(x)
-
-    return x
-
-
-def build_model():
     size = 256
     num_filters = [16, 32, 48, 64]
     # num_filters = [64, 48, 32, 16]
     # num_filters = [64, 128, 256, 512]
     inputs = Input((size, size, 3))
-    skip_x = []
-    x = inputs
-    for f in num_filters:
-        x = conv_block(x, f)
-        skip_x.append(x)
-        x = MaxPool2D((2, 2))(x)
 
-    ## Bridge
-    x = conv_block(x, num_filters[-1])
+    if model_name == 'ResUnet':
+        model = ResUnet.build_model()
 
-    num_filters.reverse()
-    skip_x.reverse()
-    ## Decoder
-    for i, f in enumerate(num_filters):
-        x = UpSampling2D((2, 2))(x)
-        xs = skip_x[i]
-        x = Concatenate()([x, xs])
-        x = conv_block(x, f)
+    elif model_name == 'Transpose_Unet':
+        model = Transpose_Unet.build_model()
 
-    ## Output
-    x = Conv2D(1, (1, 1), padding="same")(x)
-    x = Activation("sigmoid")(x)
-
-    return Model(inputs, x)
+    return model
 
 
 def mask_parse(mask):
@@ -329,12 +297,12 @@ def evaluate_and_predict(model, directory_to_evaluate,
         y_pred = model.predict(np.expand_dims(x, axis=0))[0] > 0.5
         delta = time.time() - init_time
         times.append(delta)
-        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/', image_modality, '/']), '')
+        name_original_file = directory_image.replace(''.join([directory_to_evaluate, 'image/']), '')
         results_name = ''.join([results_directory, output_directory, name_original_file])
         cv2.imwrite(results_name, y_pred * 255.0)
 
     # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
+    ground_truth_imgs_dir = directory_to_evaluate + 'image/'
     result_mask_dir = results_directory + output_directory
 
     ground_truth_image_list = [file for file in os.listdir(ground_truth_imgs_dir) if
@@ -350,7 +318,7 @@ def evaluate_and_predict(model, directory_to_evaluate,
     test_steps = (len(test_x) // batch_size)
 
     # save the results of the test dataset in a CSV file
-    ground_truth_imgs_dir = directory_to_evaluate + 'image/' + image_modality + '/'
+    ground_truth_imgs_dir = directory_to_evaluate + 'image/'
     ground_truth_labels_dir = directory_to_evaluate + 'label/'
     result_mask_dir = results_directory + output_directory
 
@@ -524,6 +492,7 @@ def clean_mask(mask):
 
     return new_mask
 
+
 def determine_convex_hull(contours):
 
     point_sets = np.asarray(contours[0])
@@ -620,11 +589,11 @@ def save_plots(model_history, results_directory, new_results_id):
 
 
 def main(project_folder):
-    name_model = 'ResUnet'
+    name_model = 'Transpose_Unet'
     # Hyper-parameters:
     batch = 16
-    lr = 1e-3
-    epochs = 2
+    lr = 1e-5
+    epochs = 1
     # optimizer:
     opt = tf.keras.optimizers.Adam(lr)
 
@@ -656,7 +625,7 @@ def main(project_folder):
     metrics = ["acc", tf.keras.metrics.Recall(),
                tf.keras.metrics.Precision(), dice_coef, iou]
 
-    model = build_model()
+    model = build_model(name_model)
     model.summary()
     model.compile(optimizer=opt, loss=dice_coef_loss, metrics=metrics)
     training_starting_time = datetime.datetime.now()
@@ -735,18 +704,19 @@ def main(project_folder):
         os.mkdir(results_directory + 'predictions/val/')
         evaluation_directory_val = project_folder + "val/original_data/"
         name_test_csv_file = evaluate_and_predict(model, evaluation_directory_val,
-                                                    results_directory, 'val', new_results_id)
+                                                    image_modality, results_directory,
+                                                  'val', new_results_id)
 
     if evaluate_train_dir is True:
         os.mkdir(results_directory + 'predictions/train/')
         evaluation_directory_val = project_folder + "train/original_data/"
         name_test_csv_file = evaluate_and_predict(model, evaluation_directory_val,
-                                                    results_directory, 'train', new_results_id)
+                                                  image_modality, results_directory,
+                                                  'train', new_results_id)
 
 
 if __name__ == "__main__":
-    project_folder = '/home/nearlab/Jorge/current_work/' \
-                 'lumen_segmentation/data/lumen_data/'
+    project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/phantom_lumen/'
     main(project_folder)
 
 
