@@ -14,6 +14,9 @@ import csv
 import matplotlib.pyplot as plt
 from Unet_based import ResUnet
 from Unet_based import Transpose_Unet
+from Unet_based import Transpose_ResUnet
+from Unet_based import Transpose_Unet
+from Unet_based import Unet
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
@@ -130,6 +133,12 @@ def build_model(model_name):
 
     elif model_name == 'Transpose_Unet':
         model = Transpose_Unet.build_model()
+
+    elif model_name == 'Transpose_ResUnet':
+        model = Transpose_ResUnet.build_model()
+
+    elif model_name == 'Unet':
+        model = Unet.build_model()
 
     return model
 
@@ -589,11 +598,11 @@ def save_plots(model_history, results_directory, new_results_id):
 
 
 def main(project_folder):
-    name_model = 'Transpose_Unet'
+    name_model = 'Unet'
     # Hyper-parameters:
-    batch = 16
-    lr = 1e-5
-    epochs = 1
+    batch = 8
+    lr = 1e-4
+    epochs = 2
     # optimizer:
     opt = tf.keras.optimizers.Adam(lr)
 
