@@ -597,12 +597,9 @@ def save_plots(model_history, results_directory, new_results_id):
     print('Plots of the history saved at: results_directory')
 
 
-def main(project_folder):
-    name_model = 'Unet'
-    # Hyper-parameters:
-    batch = 8
-    lr = 1e-4
-    epochs = 2
+def main(project_folder, name_model, batch, lr):
+
+    epochs = 450
     # optimizer:
     opt = tf.keras.optimizers.Adam(lr)
 
@@ -726,7 +723,15 @@ def main(project_folder):
 
 if __name__ == "__main__":
     project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/phantom_lumen/'
-    main(project_folder)
+
+    name_models = ['ResUnet', 'Unet', 'Transpose_Unet', 'Transpose_ResUnet']
+    # Hyper-parameters:
+    batches = [4, 8, 16]
+    learing_rates = [1e-3, 1e-4, 1e-5, 1e-6]
+    for name_model in name_models:
+        for batch in batches:
+            for lr in learing_rates:
+                main(project_folder, name_model, batch, lr)
 
 
 
