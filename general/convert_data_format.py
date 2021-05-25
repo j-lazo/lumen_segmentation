@@ -8,7 +8,16 @@ from matplotlib import pyplot as plt
 import shutil
 
 
-def convert_data_to_pickle(folder, subfolder, new_folder, base_name_imgs):
+def convert_continous_images_to_pickle(folder, subfolder,
+                                       new_folder, volume_size):
+
+    """
+    This function gathers 2D imgs in blocks of n images and save them into npy array
+    :param folder:
+    :param subfolder:
+    :param new_folder: directory folder where the image-volumes will be saved
+    :return:
+    """
 
     if not os.path.isdir(os.path.join(new_folder, subfolder)):
         os.mkdir(os.path.join(new_folder, subfolder))
@@ -16,128 +25,127 @@ def convert_data_to_pickle(folder, subfolder, new_folder, base_name_imgs):
     if not os.path.isdir(os.path.join(new_folder, subfolder, 'image')):
         os.mkdir(os.path.join(new_folder, subfolder, 'image'))
 
-    """if not os.path.isdir(os.path.join(folder, new_folder, 'image', 'rgb')):
-        os.mkdir(os.path.join(folder, new_folder, 'image', 'rgb'))
-
-    if not os.path.isdir(os.path.join(folder, new_folder, 'image', 'grayscale')):
-        os.mkdir(os.path.join(folder, new_folder, 'image', 'grayscale'))"""
-
     if not os.path.isdir(os.path.join(new_folder, subfolder, 'label')):
         os.mkdir(os.path.join(new_folder, subfolder, 'label'))
 
     # ----------------------------------------------------------------
-    volume_size = 3
 
-    video_set = os.listdir(folder)
-    video_set.sort()
     img_clusters_number = []
     img_clusters_name = []
     img_size = 256
 
-    img_list = os.listdir(os.path.join(folder, 'image'))
-    img_list.sort()
+    img_list = sorted(os.listdir(os.path.join(folder, 'image')))
+    mask_list = sorted(os.listdir(os.path.join(folder,  'label')))
 
-    mask_list = os.listdir(os.path.join(folder,  'label'))
-    mask_list.sort()
+    base_name_imgs = img_list[0][:-8]
+    print('base_name_imgs:', base_name_imgs)
 
-    for j, image in enumerate(img_list[:]):
-        name_img = image[:-4]
-        print(image)
+    for j, image_name in enumerate(img_list[:]):
+        name_img = image_name[:-4]
         number_img = int(name_img.replace(base_name_imgs, ''))
-
         counter = number_img
         img_clusters_number.append(number_img)
-        img_clusters_name.append(image)
-        if len(img_clusters_number) > 1:
-            output_name = image[:-4]
-            if not(img_clusters_number[-2] == counter -1):
-                img_clusters_number.clear()
-                img_clusters_number.append(number_img)
-                img_clusters_name.clear()
-                img_clusters_name.append(image)
+        img_clusters_name.append(image_name)
 
-        #output_name = img_clusters_name[-2]
-        if len(img_clusters_number) >= 3:
+        # when there are more than 2 images in the cluster check consistency in numbers
+        if len(img_clusters_number) > 1:
+            output_name = image_name[:-4]
+            # check if the last number in the number list is continuous with the previous one
+            # if not clear the cluster and append the last one in a new list
+            if not(img_clusters_number[-2] == counter - 1):
+                img_clusters_number.clear()
+                img_clusters_name.clear()
+                # clear the cluster and append the new image in a new one to restart the process
+                img_clusters_number.append(number_img)
+                img_clusters_name.append(image_name)
+
+        if len(img_clusters_number) >= volume_size:
             print(img_clusters_name)
-            frames_gray = np.zeros([volume_size, img_size, img_size, 3], dtype=np.uint8)
             frames = np.zeros([volume_size, img_size, img_size, 3], dtype=np.uint8)
             masks = np.zeros([volume_size, img_size, img_size, 3], dtype=np.uint8)
 
-            for k, image_name in reversed(list(enumerate(img_clusters_name[-3:]))):
-
+            for k, image_name in (list(enumerate(img_clusters_name[-3:]))):
                 frame = cv2.imread(os.path.join(folder, 'image', image_name), 1)
                 frame = cv2.resize(frame, (img_size, img_size), cv2.INTER_AREA)
-                print(image_name)
                 print(os.path.isfile(os.path.join(folder, 'label', image_name)))
                 mask = cv2.imread(os.path.join(folder, 'label', image_name), 1)
-                mask = cv2.resize(mask, (img_size, img_size), cv2.INTER_AREA)
+                #mask = cv2.resize(mask, (img_size, img_size), cv2.INTER_AREA)
 
                 #frames_gray[k:, :, :] = frame_gray
                 if np.shape(frame[:, :, 0]) == np.shape(frame[:, :, 1]) == np.shape(frame[:, :, 2]):
                     frames[k, :, :, :] = frame
-                    masks[k, :, :, :] = mask
+                    #masks[k, :, :, :] = mask
 
             img_clusters_number.clear()
             img_clusters_name.clear()
-            #frames = np.moveaxis(frames, 0, -3)
-            #masks = np.moveaxis(masks, 0, -3)
+
+            # save the mask
             np.save(os.path.join(new_folder, subfolder, 'image', output_name + '.npy'), frames)
-            np.save(os.path.join(new_folder, subfolder, 'label', output_name + '.npy'), masks)
-            #shutil.copy(''.join([folder, 'label/', output_name, '.png']),
-            #            ''.join([new_folder, subfolder, 'label/', output_name, '.png']))
+            #np.save(os.path.join(new_folder, subfolder, 'label', output_name + '.npy'), masks)
 
             mask_out = cv2.imread(os.path.join(folder, 'label', output_name + '.png'), 1)
             mask_out = cv2.resize(mask_out, (img_size, img_size), cv2.INTER_AREA)
-            #cv2.imwrite(os.path.join(new_folder, subfolder, 'label', output_name + '.png'), mask_out)
+            cv2.imwrite(os.path.join(new_folder, subfolder, 'label', output_name + '.png'), mask_out)
             print(np.shape(frames))
             print(np.shape(masks))
 
 
-def convert_continous_images_to_pickle(folder, subfolder, new_folder,
-                                       base_name_imgs, volume_size=3, img_size=256):
+def convert_images_to_pickle(folder, subfolder, new_folder,
+                                       base_name_imgs, volume_size=3,
+                                       img_size=256):
 
-    video_set = os.listdir(folder)
-    video_set.sort()
-    img_clusters_number = []
+    """
+    Function that gathers continuous frames into volume pickles, it
+    only saves the pickles
+
+    :param folder:
+    :param subfolder:
+    :param new_folder:
+    :param base_name_imgs:
+    :param volume_size:
+    :param img_size:
+    :return:
+    """
+
+    video_set = sorted(os.listdir(folder))
     img_clusters_name = []
+    img_list = sorted(os.listdir(folder))
 
-    img_list = os.listdir(folder)
-    img_list.sort()
-
+    # create a cluster of continous images
     for j in range(1, len(img_list[:])-1):
         name_img = img_list[j][:-4]
-        number_img = int(name_img.replace(base_name_imgs, ''))
+        # here you save the name of the images into a list...
         img_clusters_name.append(img_list[j-1])
         img_clusters_name.append(img_list[j])
         img_clusters_name.append(img_list[j+1])
+        # create an empty volume
         frames = np.zeros([volume_size, img_size, img_size], dtype=np.uint8)
         print(img_clusters_name)
 
         for k, image_name in (list(enumerate(img_clusters_name[-3:]))):
-            #print(k, image_name)
             frame = cv2.imread(os.path.join(folder, image_name), 0)
             frame = cv2.resize(frame, (img_size, img_size), cv2.INTER_AREA)
-            #if np.shape(frame[:, :, 0]) == np.shape(frame[:, :, 1]) == np.shape(frame[:, :, 2]):
-            print(np.shape(frames))
             frames[k, :, :] = frame
+            print(np.shape(frames))
 
-        output_name = img_clusters_name[1][:-4]
+        output_name = img_clusters_name[-1][:-4]
         print(output_name)
-        np.save(os.path.join(new_folder, subfolder, output_name + '.npy'), frames)
+        #np.save(os.path.join(new_folder, subfolder, output_name + '.npy'), frames)
         img_clusters_name.clear()
         #print(np.shape(frames))
 
 
 def main():
 
-    orig_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                  'lumen_data/video_test/original_frames/'
-    subfolder = ''
-    folder = orig_folder + subfolder
-    new_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                 'lumen_data/video_test/grayscale_volume/'
-    base_name_imgs = 'P_006_pt1_frame_'
-    convert_continous_images_to_pickle(folder, subfolder, new_folder, base_name_imgs)
+
+    orig_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/phantom_lumen/all_cases/'
+    new_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/phantom_lumen/volume_data/' \
+                 '8_continuous_frames/all_cases/'
+
+    subfolder = '??'
+    folder = os.path.join(orig_folder, subfolder)
+    volume_size = 8
+    convert_continous_images_to_pickle(folder, subfolder, new_folder, volume_size)
 
 
 if __name__ == "__main__":
