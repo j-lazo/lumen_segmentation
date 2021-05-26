@@ -4,7 +4,7 @@ from tensorflow.keras.models import Model
 
 
 def conv_block(tensor, nfilters, size=3, padding='same', initializer="he_normal"):
-    x = Conv2D(filters=nfilters, kernel_size=(size, size), padding=padding)(tensor)
+    x = Conv2D(filters=nfilters, kernel_size=(size, size), padding=padding,  kernel_initializer=initializer)(tensor)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
 
@@ -12,7 +12,7 @@ def conv_block(tensor, nfilters, size=3, padding='same', initializer="he_normal"
     skip = Activation("relu")(skip)
     skip = BatchNormalization()(skip)
 
-    x = Conv2D(filters=nfilters, kernel_size=(size, size), padding=padding)(x)
+    x = Conv2D(filters=nfilters, kernel_size=(size, size), padding=padding,  kernel_initializer=initializer)(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
 
@@ -45,16 +45,16 @@ def build_model():
     conv3_out = MaxPooling2D(pool_size=(2, 2))(conv3)
     conv4 = conv_block(conv3_out, nfilters=filters*8)
     conv4_out = MaxPooling2D(pool_size=(2, 2))(conv4)
-    conv4_out = Dropout(0.5)(conv4_out)
+    #conv4_out = Dropout(0.5)(conv4_out)
     conv5 = conv_block(conv4_out, nfilters=filters*16)
-    conv5 = Dropout(0.5)(conv5)
+    #conv5 = Dropout(0.5)(conv5)
     # up
     print(conv5.get_shape(), conv4.get_shape())
     deconv6 = deconv_block(conv5, residual=conv4, nfilters=filters*8)
-    deconv6 = Dropout(0.5)(deconv6)
+    #deconv6 = Dropout(0.5)(deconv6)
     print(deconv6.get_shape(), conv3.get_shape())
     deconv7 = deconv_block(deconv6, residual=conv3, nfilters=filters*4)
-    deconv7 = Dropout(0.5)(deconv7)
+    #deconv7 = Dropout(0.5)(deconv7)
     print(deconv7.get_shape(), conv2.get_shape())
     deconv8 = deconv_block(deconv7, residual=conv2, nfilters=filters*2)
     print(deconv8.get_shape(), conv1.get_shape())
@@ -62,7 +62,7 @@ def build_model():
     # output
     output_layer = Conv2D(filters=nclasses, kernel_size=(1, 1))(deconv9)
     output_layer = BatchNormalization()(output_layer)
-    output_layer = Activation('softmax')(output_layer)
+    output_layer = Activation('sigmoid')(output_layer)
 
-    model = Model(inputs=input_layer, outputs=output_layer, name='Transpose ResUnet')
+    model = Model(inputs=input_layer, outputs=output_layer, name='Transpose_ResUnet')
     return model
