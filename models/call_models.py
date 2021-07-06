@@ -18,6 +18,7 @@ from Unet_based import Transpose_Unet
 from Unet_based import Unet
 from Unet_based import continuous_blocks_ResUnet
 from Unet_based import ensemble
+from Unet_based import ensemble_2
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
@@ -191,8 +192,11 @@ def build_model(model_name):
     elif model_name == 'continuous_blocks_ResUnet':
         model = continuous_blocks_ResUnet.build()
 
-    elif model_name == 'ensemble':
+    elif model_name == 'simple_ensemble':
         model = ensemble.build_model()
+
+    elif model_name == 'ensemble':
+        model = ensemble_2.build_model()
 
     return model
 
@@ -571,7 +575,7 @@ def save_plots(model_history, results_directory, new_results_id):
 
 
 def main(project_folder, name_model, batch, lr):
-    epochs = 650
+    epochs = 950
     # optimizer:
     opt = tf.keras.optimizers.Adam(lr)
 
@@ -594,7 +598,7 @@ def main(project_folder, name_model, batch, lr):
                                    'train', amount_data])
         val_data_used = ''.join([project_folder, 'volume_data/', str(3), '_continuous_frames/',
                                  'val', amount_data])
-    elif name_model == 'ensemble':
+    elif name_model == 'simple_ensemble' or name_model == 'ensemble':
         image_modality = 'ensemble'
         amount_data = '/original_data/'
         train_data_used = ''.join([project_folder, 'volume_data/', str(3), '_continuous_frames/',
@@ -726,8 +730,8 @@ if __name__ == "__main__":
     project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/phantom_lumen/'
     name_models = ['ensemble']
     # Hyper-parameters:
-    batches = [8, 16, 4, 32]
-    learing_rates = [1e-3, 1e-4, 1e-5, 1e-6]
+    batches = [4]
+    learing_rates = [1e-3, 1e-4, 1e-5]
     for name_model in name_models:
         for batch in batches:
             for lr in learing_rates:
